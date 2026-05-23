@@ -1,0 +1,14 @@
+name: Platform Compliance
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    uses: proappstore-online/proappstore/.github/workflows/app-ci.yml@main

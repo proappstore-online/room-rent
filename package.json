@@ -1,0 +1,16 @@
+{
+  "name": "room-rent",
+  "private": true,
+  "description": "Room Rent — find and list short-term rentals on ProAppStore.",
+  "packageManager": "pnpm@10.30.3",
+  "engines": { "node": ">=22" },
+  "repository": { "type": "git", "url": "git+https://github.com/proappstore-online/room-rent.git" },
+  "pnpm": { "onlyBuiltDependencies": ["esbuild"] },
+  "scripts": {
+    "dev": "pnpm --filter @room-rent/web dev",
+    "prebuild": "npx -y @proappstore/cli@latest check",
+    "build": "pnpm --filter @room-rent/web build",
+    "preview": "pnpm --filter @room-rent/web preview",
+    "typecheck": "pnpm --filter @room-rent/web exec tsc -b"
+  }
+}

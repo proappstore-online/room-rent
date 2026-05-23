@@ -1,0 +1,77 @@
+import type { ProAppStore } from '@proappstore/sdk'
+
+const migrations = [
+  {
+    up: `CREATE TABLE IF NOT EXISTS listings (
+      id TEXT PRIMARY KEY,
+      host_id TEXT NOT NULL,
+      host_name TEXT NOT NULL DEFAULT '',
+      host_avatar TEXT NOT NULL DEFAULT '',
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      price_per_night REAL NOT NULL,
+      location TEXT NOT NULL DEFAULT '',
+      lat REAL NOT NULL DEFAULT 0,
+      lng REAL NOT NULL DEFAULT 0,
+      capacity INTEGER NOT NULL DEFAULT 1,
+      bedrooms INTEGER NOT NULL DEFAULT 1,
+      bathrooms INTEGER NOT NULL DEFAULT 1,
+      amenities TEXT NOT NULL DEFAULT '[]',
+      images TEXT NOT NULL DEFAULT '[]',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`,
+  },
+  {
+    up: `CREATE TABLE IF NOT EXISTS bookings (
+      id TEXT PRIMARY KEY,
+      listing_id TEXT NOT NULL,
+      guest_id TEXT NOT NULL,
+      guest_name TEXT NOT NULL DEFAULT '',
+      check_in TEXT NOT NULL,
+      check_out TEXT NOT NULL,
+      guests INTEGER NOT NULL DEFAULT 1,
+      total_price REAL NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (listing_id) REFERENCES listings(id)
+    )`,
+  },
+  {
+    up: `CREATE TABLE IF NOT EXISTS reviews (
+      id TEXT PRIMARY KEY,
+      listing_id TEXT NOT NULL,
+      booking_id TEXT NOT NULL,
+      author_id TEXT NOT NULL,
+      author_name TEXT NOT NULL DEFAULT '',
+      author_avatar TEXT NOT NULL DEFAULT '',
+      rating INTEGER NOT NULL,
+      comment TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (listing_id) REFERENCES listings(id),
+      FOREIGN KEY (booking_id) REFERENCES bookings(id)
+    )`,
+  },
+  {
+    up: `CREATE INDEX IF NOT EXISTS idx_listings_host ON listings(host_id)`,
+  },
+  {
+    up: `CREATE INDEX IF NOT EXISTS idx_bookings_listing ON bookings(listing_id)`,
+  },
+  {
+    up: `CREATE INDEX IF NOT EXISTS idx_bookings_guest ON bookings(guest_id)`,
+  },
+  {
+    up: `CREATE INDEX IF NOT EXISTS idx_reviews_listing ON reviews(listing_id)`,
+  },
+]
+
+let migrated = false
+
+export async function ensureMigrated(app: ProAppStore) {
+  if (migrated) return
+  for (const m of migrations) {
+    await app.db.execute(m.up)
+  }
+  migrated = true
+}
