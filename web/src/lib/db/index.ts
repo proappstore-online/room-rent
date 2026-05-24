@@ -84,6 +84,8 @@ export async function createBooking(
   data: Omit<Booking, 'id' | 'created_at' | 'status'>,
 ): Promise<string> {
   await ensureMigrated(app)
+  const { rows: [listingRow] } = await app.db.query('SELECT host_id FROM listings WHERE id = ?', [data.listing_id])
+  const hostId = (listingRow as unknown as { host_id: string })?.host_id
   const { rows: conflicts } = await app.db.query(
     `SELECT 1 FROM bookings WHERE listing_id = ? AND status IN ('pending','confirmed') AND check_in < ? AND check_out > ? LIMIT 1`,
     [data.listing_id, data.check_out, data.check_in],
@@ -95,6 +97,15 @@ export async function createBooking(
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
     [id, data.listing_id, data.guest_id, data.guest_name, data.check_in, data.check_out, data.guests, data.total_price, Date.now()],
   )
+  if (hostId) {
+    try {
+      await app.notifications.notifyUser(hostId, {
+        title: 'New booking request',
+        body: `${data.guest_name} wants to book ${data.check_in} → ${data.check_out}`,
+        url: '/#/host',
+      })
+    } catch { /* notification delivery is best-effort */ }
+  }
   return id
 }
 
@@ -132,6 +143,24 @@ export async function getHostBookings(hostId: string): Promise<(Booking & { list
 export async function updateBookingStatus(id: string, status: Booking['status']): Promise<void> {
   await ensureMigrated(app)
   await app.db.execute('UPDATE bookings SET status = ? WHERE id = ?', [status, id])
+  if (status === 'confirmed' || status === 'cancelled') {
+    try {
+      const { rows: [info] } = await app.db.query(
+        'SELECT b.guest_id, b.guest_name, l.title FROM bookings b JOIN listings l ON b.listing_id = l.id WHERE b.id = ?',
+        [id],
+      )
+      const { guest_id, title } = info as unknown as { guest_id: string; guest_name: string; title: string }
+      if (guest_id) {
+        await app.notifications.notifyUser(guest_id, {
+          title: status === 'confirmed' ? 'Booking confirmed!' : 'Booking cancelled',
+          body: status === 'confirmed'
+            ? `Your booking for "${title}" has been confirmed.`
+            : `Your booking for "${title}" has been cancelled.`,
+          url: '/#/bookings',
+        })
+      }
+    } catch { /* notification delivery is best-effort */ }
+  }
 }
 
 // --- Reviews ---

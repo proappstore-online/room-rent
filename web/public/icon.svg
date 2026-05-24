@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#fff"/>
+  <!-- House outline -->
+  <path d="M256 100 L420 230 L420 400 Q420 420 400 420 L112 420 Q92 420 92 400 L92 230 Z"
+        fill="none" stroke="#d86f4d" stroke-width="28" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- Roof peak accent -->
+  <path d="M256 100 L420 230" fill="none" stroke="#d86f4d" stroke-width="28" stroke-linecap="round"/>
+  <path d="M256 100 L92 230" fill="none" stroke="#d86f4d" stroke-width="28" stroke-linecap="round"/>
+  <!-- Door -->
+  <rect x="210" y="290" width="92" height="130" rx="12" fill="none" stroke="#d86f4d" stroke-width="20"/>
+  <!-- Key hole / doorknob -->
+  <circle cx="280" cy="355" r="10" fill="#d86f4d"/>
+</svg>

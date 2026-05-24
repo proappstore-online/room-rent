@@ -33,6 +33,11 @@ export function HostDashboard({
     setBookings((prev) => prev.map((b) => b.id === bookingId ? { ...b, status: 'cancelled' as const } : b))
   }
 
+  async function handleComplete(bookingId: string) {
+    await updateBookingStatus(bookingId, 'completed')
+    setBookings((prev) => prev.map((b) => b.id === bookingId ? { ...b, status: 'completed' as const } : b))
+  }
+
   async function handleDelete(listingId: string) {
     await deleteListing(listingId, user.id)
     setListings((prev) => prev.filter((l) => l.id !== listingId))
@@ -154,31 +159,49 @@ export function HostDashboard({
                   <span
                     className="rounded-full px-2 py-0.5 text-xs font-medium capitalize"
                     style={{
-                      background: b.status === 'confirmed' ? 'var(--mint-soft)' : b.status === 'cancelled' ? 'var(--line)' : 'var(--accent-soft)',
-                      color: b.status === 'confirmed' ? 'var(--mint)' : b.status === 'cancelled' ? 'var(--muted)' : 'var(--accent)',
+                      background: b.status === 'completed' ? 'var(--mint-soft)' : b.status === 'confirmed' ? 'var(--mint-soft)' : b.status === 'cancelled' ? 'var(--line)' : 'var(--accent-soft)',
+                      color: b.status === 'completed' ? 'var(--mint-deep, var(--mint))' : b.status === 'confirmed' ? 'var(--mint)' : b.status === 'cancelled' ? 'var(--muted)' : 'var(--accent)',
                     }}
                   >
                     {b.status}
                   </span>
                 </div>
-                {b.status === 'pending' && (
-                  <div className="mt-3 flex gap-2">
+                <div className="mt-3 flex items-center gap-2">
+                  {b.status === 'pending' && (
+                    <>
+                      <button
+                        onClick={() => handleConfirm(b.id)}
+                        className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
+                        style={{ background: 'var(--mint)' }}
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => handleCancel(b.id)}
+                        className="rounded-lg px-3 py-1.5 text-xs font-medium"
+                        style={{ color: 'var(--error)', background: 'var(--glass)', border: '1px solid var(--line)' }}
+                      >
+                        Decline
+                      </button>
+                    </>
+                  )}
+                  {b.status === 'confirmed' && (
                     <button
-                      onClick={() => handleConfirm(b.id)}
+                      onClick={() => handleComplete(b.id)}
                       className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
                       style={{ background: 'var(--mint)' }}
                     >
-                      Confirm
+                      Mark completed
                     </button>
-                    <button
-                      onClick={() => handleCancel(b.id)}
-                      className="rounded-lg px-3 py-1.5 text-xs font-medium"
-                      style={{ color: 'var(--error)', background: 'var(--glass)', border: '1px solid var(--line)' }}
-                    >
-                      Decline
-                    </button>
-                  </div>
-                )}
+                  )}
+                  <button
+                    onClick={() => onNavigate(`#/messages/${b.listing_id}/${b.guest_id}`)}
+                    className="text-xs font-medium"
+                    style={{ color: 'var(--accent)' }}
+                  >
+                    Message guest
+                  </button>
+                </div>
               </div>
             ))}
           </div>

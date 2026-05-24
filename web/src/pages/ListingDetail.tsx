@@ -6,12 +6,10 @@ import { getListing, getReviewsForListing, getBookingsForListing, createBooking,
 export function ListingDetail({
   listingId,
   user,
-  onSignIn,
   onNavigate,
 }: {
   listingId: string
   user: User | null
-  onSignIn: () => void
   onNavigate: (hash: string) => void
 }) {
   const [listing, setListing] = useState<Listing | null>(null)
@@ -93,7 +91,7 @@ export function ListingDetail({
   const totalPrice = nightsSubtotal + cleaningFee + serviceFee
 
   async function handleBook() {
-    if (!user) { onSignIn(); return }
+    if (!user) { onNavigate('#/signin'); return }
     if (!checkIn || !checkOut || nights <= 0) return
     setBooking(true)
     setBookError('')
@@ -190,7 +188,7 @@ export function ListingDetail({
                 {listing.host_name.charAt(0).toUpperCase()}
               </div>
             )}
-            <div>
+            <div className="flex-1">
               <p className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>Hosted by {listing.host_name}</p>
               {avgRating && (
                 <p className="text-xs" style={{ color: 'var(--muted)' }}>
@@ -198,6 +196,18 @@ export function ListingDetail({
                 </p>
               )}
             </div>
+            {user && !isOwner && (
+              <button
+                onClick={() => onNavigate('#/messages/' + listing.id + '/' + listing.host_id)}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium"
+                style={{ color: 'var(--accent)', background: 'transparent', border: '1px solid var(--line)' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                </svg>
+                Contact host
+              </button>
+            )}
           </div>
 
           {/* Description */}

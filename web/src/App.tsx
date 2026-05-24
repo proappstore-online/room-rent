@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useProAuth } from '@proappstore/sdk/hooks'
 import { app } from './lib/app'
 import { Header } from './components/Header'
+import { BottomNav } from './components/BottomNav'
 import { Browse } from './pages/Browse'
 import { ListingDetail } from './pages/ListingDetail'
 import { CreateListing } from './pages/CreateListing'
@@ -10,6 +11,7 @@ import { HostDashboard } from './pages/HostDashboard'
 import { EditListing } from './pages/EditListing'
 import { Wishlists } from './pages/Wishlists'
 import { Messages } from './pages/Messages'
+import { SignIn } from './pages/SignIn'
 
 type Route =
   | { name: 'browse' }
@@ -20,6 +22,7 @@ type Route =
   | { name: 'bookings' }
   | { name: 'wishlists' }
   | { name: 'messages'; listingId?: string; recipientId?: string }
+  | { name: 'signin' }
 
 function parseHash(): Route {
   const h = location.hash
@@ -34,11 +37,12 @@ function parseHash(): Route {
   m = h.match(/^#\/messages\/([\w-]+)\/([\w-]+)$/)
   if (m) return { name: 'messages', listingId: m[1], recipientId: m[2] }
   if (h === '#/messages') return { name: 'messages' }
+  if (h === '#/signin') return { name: 'signin' }
   return { name: 'browse' }
 }
 
 export default function App() {
-  const { user, loading, signIn, signOut } = useProAuth(app)
+  const { user, loading, signOut } = useProAuth(app)
   const [route, setRoute] = useState<Route>(parseHash)
 
   useEffect(() => {
@@ -51,6 +55,10 @@ export default function App() {
     location.hash = hash
   }, [])
 
+  useEffect(() => {
+    if (route.name === 'signin' && user) navigate('#/')
+  }, [route.name, user, navigate])
+
   if (loading) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
@@ -61,10 +69,10 @@ export default function App() {
 
   return (
     <>
-      <Header user={user} onSignIn={signIn} onSignOut={signOut} onNavigate={navigate} />
+      <Header user={user} onSignIn={() => navigate('#/signin')} onSignOut={signOut} onNavigate={navigate} />
       {route.name === 'browse' && <Browse onNavigate={navigate} user={user} />}
       {route.name === 'listing' && (
-        <ListingDetail listingId={route.id} user={user} onSignIn={signIn} onNavigate={navigate} />
+        <ListingDetail listingId={route.id} user={user} onNavigate={navigate} />
       )}
       {route.name === 'host' && user && (
         <HostDashboard user={user} onNavigate={navigate} />
@@ -84,18 +92,11 @@ export default function App() {
       {route.name === 'messages' && user && (
         <Messages user={user} onNavigate={navigate} listingId={route.listingId} recipientId={route.recipientId} />
       )}
+      {route.name === 'signin' && !user && <SignIn />}
       {(route.name === 'host' || route.name === 'host-new' || route.name === 'host-edit' || route.name === 'bookings' || route.name === 'wishlists' || route.name === 'messages') && !user && (
-        <div className="flex flex-col items-center justify-center py-20">
-          <p className="text-sm" style={{ color: 'var(--muted)' }}>Sign in to continue.</p>
-          <button
-            onClick={signIn}
-            className="mt-4 rounded-full px-6 py-2 text-sm font-semibold text-white"
-            style={{ background: 'var(--accent)' }}
-          >
-            Sign in
-          </button>
-        </div>
+        <SignIn />
       )}
+      <BottomNav user={user} onNavigate={navigate} onSignIn={() => navigate('#/signin')} activeRoute={route.name} />
     </>
   )
 }

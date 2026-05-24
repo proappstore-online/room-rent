@@ -1,4 +1,5 @@
 import type { User } from '@proappstore/sdk'
+import { NotificationBell } from './NotificationBell'
 
 export function Header({
   user,
@@ -19,54 +20,59 @@ export function Header({
         </button>
 
         <nav className="flex items-center gap-3">
-          <button
-            onClick={() => onNavigate('#/')}
-            className="rounded-lg px-3 py-1.5 text-sm font-medium"
-            style={{ color: 'var(--ink)' }}
-          >
-            Browse
-          </button>
-          {user && (
+          <div className="hidden items-center gap-3 lg:flex">
+            <button
+              onClick={() => onNavigate('#/')}
+              className="rounded-lg px-3 py-1.5 text-sm font-medium"
+              style={{ color: 'var(--ink)' }}
+            >
+              Browse
+            </button>
+            {user && (
+              <>
+                <button
+                  onClick={() => onNavigate('#/host')}
+                  className="rounded-lg px-3 py-1.5 text-sm font-medium"
+                  style={{ color: 'var(--muted)' }}
+                >
+                  Host
+                </button>
+                <button
+                  onClick={() => onNavigate('#/bookings')}
+                  className="rounded-lg px-3 py-1.5 text-sm font-medium"
+                  style={{ color: 'var(--muted)' }}
+                >
+                  Trips
+                </button>
+                <button
+                  onClick={() => onNavigate('#/wishlists')}
+                  className="rounded-lg px-3 py-1.5 text-sm font-medium"
+                  style={{ color: 'var(--muted)' }}
+                >
+                  Wishlists
+                </button>
+                <button
+                  onClick={() => onNavigate('#/messages')}
+                  className="rounded-lg px-3 py-1.5 text-sm font-medium"
+                  style={{ color: 'var(--muted)' }}
+                >
+                  Messages
+                </button>
+              </>
+            )}
+          </div>
+          {user ? (
             <>
+              <NotificationBell />
               <button
-                onClick={() => onNavigate('#/host')}
-                className="rounded-lg px-3 py-1.5 text-sm font-medium"
-                style={{ color: 'var(--muted)' }}
+                onClick={onSignOut}
+                className="flex items-center gap-2 rounded-full py-1 pr-3 pl-1"
+                style={{ background: 'var(--glass)', border: '1px solid var(--line)' }}
               >
-                Host
-              </button>
-              <button
-                onClick={() => onNavigate('#/bookings')}
-                className="rounded-lg px-3 py-1.5 text-sm font-medium"
-                style={{ color: 'var(--muted)' }}
-              >
-                Trips
-              </button>
-              <button
-                onClick={() => onNavigate('#/wishlists')}
-                className="rounded-lg px-3 py-1.5 text-sm font-medium"
-                style={{ color: 'var(--muted)' }}
-              >
-                Wishlists
-              </button>
-              <button
-                onClick={() => onNavigate('#/messages')}
-                className="rounded-lg px-3 py-1.5 text-sm font-medium"
-                style={{ color: 'var(--muted)' }}
-              >
-                Messages
+                <img src={user.avatarUrl ?? undefined} alt="" className="h-7 w-7 rounded-full" />
+                <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>{user.login}</span>
               </button>
             </>
-          )}
-          {user ? (
-            <button
-              onClick={onSignOut}
-              className="flex items-center gap-2 rounded-full py-1 pr-3 pl-1"
-              style={{ background: 'var(--glass)', border: '1px solid var(--line)' }}
-            >
-              <img src={user.avatarUrl ?? undefined} alt="" className="h-7 w-7 rounded-full" />
-              <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>{user.login}</span>
-            </button>
           ) : (
             <button
               onClick={onSignIn}
