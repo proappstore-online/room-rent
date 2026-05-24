@@ -54,17 +54,22 @@ export function Messages({
   async function handleSend() {
     if (!body.trim() || !listingId || !recipientId) return
     setSending(true)
-    await sendMessage({
-      listing_id: listingId,
-      sender_id: user.id,
-      sender_name: user.login,
-      recipient_id: recipientId,
-      body: body.trim(),
-    })
-    setBody('')
-    const updated = await getMessages(listingId, user.id, recipientId)
-    setMessages(updated)
-    setSending(false)
+    try {
+      await sendMessage({
+        listing_id: listingId,
+        sender_id: user.id,
+        sender_name: user.login,
+        recipient_id: recipientId,
+        body: body.trim(),
+      })
+      setBody('')
+      const updated = await getMessages(listingId, user.id, recipientId)
+      setMessages(updated)
+    } catch {
+      // send failed — user can retry
+    } finally {
+      setSending(false)
+    }
   }
 
   // --- Thread view ---

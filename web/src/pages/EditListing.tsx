@@ -77,11 +77,15 @@ export function EditListing({
     setExistingImages((prev) => prev.filter((_, i) => i !== index))
   }
 
+  const [submitError, setSubmitError] = useState('')
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!title || !price) return
     setSaving(true)
+    setSubmitError('')
 
+    try {
     // Geocode location — keep existing coords if geocode fails
     let lat = origLat
     let lng = origLng
@@ -131,6 +135,12 @@ export function EditListing({
     })
 
     onNavigate(`#/listing/${listingId}`)
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to save listing.')
+    } finally {
+      setSaving(false)
+      setUploadProgress('')
+    }
   }
 
   if (loading) {
@@ -500,6 +510,9 @@ export function EditListing({
         >
           {saving ? (uploadProgress || 'Saving...') : 'Save changes'}
         </button>
+        {submitError && (
+          <p className="mt-2 text-center text-sm" style={{ color: 'var(--error)' }}>{submitError}</p>
+        )}
       </form>
     </div>
   )

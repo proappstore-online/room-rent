@@ -246,7 +246,11 @@ export async function getConversations(userId: string): Promise<{ listing_id: st
   await ensureMigrated(app)
   const { rows } = await app.db.query(
     `SELECT sub.listing_id, l.title as listing_title, sub.other_id,
-       m2.sender_name as other_name, m2.body as last_message, m2.created_at as last_at
+       COALESCE(
+         (SELECT sender_name FROM messages WHERE listing_id = sub.listing_id AND sender_id = sub.other_id LIMIT 1),
+         'User'
+       ) as other_name,
+       m2.body as last_message, m2.created_at as last_at
      FROM (
        SELECT listing_id,
          CASE WHEN sender_id = ? THEN recipient_id ELSE sender_id END as other_id,

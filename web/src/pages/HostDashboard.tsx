@@ -39,6 +39,7 @@ export function HostDashboard({
   }
 
   async function handleDelete(listingId: string) {
+    if (!confirm('Delete this listing? All bookings, reviews, and messages will be permanently removed.')) return
     await deleteListing(listingId, user.id)
     setListings((prev) => prev.filter((l) => l.id !== listingId))
   }
@@ -153,7 +154,7 @@ export function HostDashboard({
                     <p className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>{b.guest_name}</p>
                     <p className="text-xs" style={{ color: 'var(--muted)' }}>{b.listing_title}</p>
                     <p className="mt-0.5 text-xs" style={{ color: 'var(--muted)' }}>
-                      {b.check_in} &rarr; {b.check_out} · {b.guests} guest{b.guests !== 1 ? 's' : ''} · ${b.total_price}
+                      {b.check_in} &rarr; {b.check_out} · {b.guests} guest{b.guests !== 1 ? 's' : ''} · ${b.total_price.toFixed(2)}
                     </p>
                   </div>
                   <span

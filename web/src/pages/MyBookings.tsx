@@ -75,7 +75,7 @@ export function MyBookings({
                   <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: colors.bg, color: colors.text }}>
                     {b.status}
                   </span>
-                  <span className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>${b.total_price}</span>
+                  <span className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>${b.total_price.toFixed(2)}</span>
                 </div>
               </button>
             )
