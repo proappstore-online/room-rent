@@ -353,7 +353,7 @@ export function ListingDetail({
         </div>
 
         {/* Booking card */}
-        <div className="lg:sticky lg:top-20 self-start">
+        <div id="booking-card" className="lg:sticky lg:top-20 self-start">
           <div className="rounded-2xl p-5" style={{ background: 'var(--panel-strong)', border: '1px solid var(--line)', boxShadow: 'var(--shadow-card)' }}>
             <p className="text-xl font-semibold" style={{ color: 'var(--ink)' }}>
               ${listing.price_per_night}<span className="text-sm font-normal" style={{ color: 'var(--muted)' }}> / night</span>
@@ -372,25 +372,25 @@ export function ListingDetail({
             ) : (
               <>
                 <div className="mt-4 grid grid-cols-2 gap-2">
-                  <label className="block">
+                  <label className="block min-w-0">
                     <span className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Check-in</span>
                     <input
                       type="date"
                       value={checkIn}
                       onChange={(e) => setCheckIn(e.target.value)}
                       min={new Date().toISOString().split('T')[0]}
-                      className="mt-1 w-full rounded-lg px-3 py-2 text-sm outline-none"
+                      className="mt-1 w-full min-w-0 rounded-lg px-3 py-2 text-sm outline-none"
                       style={{ background: 'var(--glass)', border: '1px solid var(--line)', color: 'var(--ink)' }}
                     />
                   </label>
-                  <label className="block">
+                  <label className="block min-w-0">
                     <span className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Check-out</span>
                     <input
                       type="date"
                       value={checkOut}
                       onChange={(e) => setCheckOut(e.target.value)}
                       min={checkIn || new Date().toISOString().split('T')[0]}
-                      className="mt-1 w-full rounded-lg px-3 py-2 text-sm outline-none"
+                      className="mt-1 w-full min-w-0 rounded-lg px-3 py-2 text-sm outline-none"
                       style={{ background: 'var(--glass)', border: '1px solid var(--line)', color: 'var(--ink)' }}
                     />
                   </label>
@@ -455,6 +455,27 @@ export function ListingDetail({
           </div>
         </div>
       </div>
+
+      {/* Mobile booking bar */}
+      {!isOwner && !booked && (
+        <div className="fixed bottom-14 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 lg:hidden"
+          style={{ background: 'var(--glass-strong)', borderTop: '1px solid var(--line)', backdropFilter: 'blur(20px)' }}
+        >
+          <div>
+            <span className="text-base font-semibold" style={{ color: 'var(--ink)' }}>
+              ${listing.price_per_night.toFixed(2)}
+            </span>
+            <span className="text-xs" style={{ color: 'var(--muted)' }}> / night</span>
+          </div>
+          <button
+            onClick={() => document.getElementById('booking-card')?.scrollIntoView({ behavior: 'smooth' })}
+            className="rounded-xl px-5 py-2 text-sm font-semibold text-white"
+            style={{ background: 'var(--accent)' }}
+          >
+            {listing.instant_book ? 'Book now' : 'Reserve'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

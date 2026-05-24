@@ -135,7 +135,7 @@ export function Browse({ onNavigate, user }: { onNavigate: (hash: string) => voi
             {/* Price range */}
             <div>
               <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Price per night ($)</span>
-              <div className="mt-1.5 flex items-center gap-3">
+              <div className="mt-1.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <input
                   type="number"
                   placeholder="Min"
@@ -145,7 +145,7 @@ export function Browse({ onNavigate, user }: { onNavigate: (hash: string) => voi
                   className="w-full rounded-lg px-3 py-2 text-sm outline-none"
                   style={{ background: 'var(--glass)', border: '1px solid var(--line)', color: 'var(--ink)' }}
                 />
-                <span className="text-sm" style={{ color: 'var(--muted)' }}>–</span>
+                <span className="hidden text-sm sm:block" style={{ color: 'var(--muted)' }}>–</span>
                 <input
                   type="number"
                   placeholder="Max"

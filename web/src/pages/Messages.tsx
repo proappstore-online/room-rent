@@ -70,7 +70,7 @@ export function Messages({
   // --- Thread view ---
   if (inThread) {
     return (
-      <div className="mx-auto flex max-w-3xl flex-col px-4 py-6" style={{ minHeight: 'calc(100dvh - 3.5rem)' }}>
+      <div className="mx-auto flex max-w-3xl flex-col px-4 py-6 pb-16 lg:pb-0" style={{ minHeight: 'calc(100dvh - 3.5rem)' }}>
         <div className="mb-4 flex items-center gap-3">
           <button
             onClick={() => onNavigate('#/messages')}
@@ -121,8 +121,8 @@ export function Messages({
         )}
 
         <div
-          className="mt-4 flex items-center gap-2 rounded-xl p-2"
-          style={{ background: 'var(--glass)', border: '1px solid var(--line)' }}
+          className="sticky bottom-[56px] lg:bottom-0 mt-4 flex items-center gap-2 rounded-xl p-2"
+          style={{ background: 'var(--glass-strong)', border: '1px solid var(--line)', backdropFilter: 'blur(20px)' }}
         >
           <input
             type="text"

@@ -143,7 +143,7 @@ export function CreateListing({
           />
         </label>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label className="block">
             <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Price / night ($)</span>
             <input
@@ -170,7 +170,7 @@ export function CreateListing({
           </label>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <label className="block">
             <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Guests</span>
             <input
@@ -355,7 +355,7 @@ export function CreateListing({
         </label>
 
         {/* Check-in / Check-out times */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label className="block">
             <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Check-in time</span>
             <input
@@ -379,7 +379,7 @@ export function CreateListing({
         </div>
 
         {/* Instant book + Cleaning fee */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Instant book</span>
             <label className="mt-1 flex items-center gap-3 cursor-pointer">
