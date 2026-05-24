@@ -64,10 +64,24 @@ export async function deleteListing(id: string): Promise<void> {
 
 // --- Bookings ---
 
+export async function hasCompletedBooking(listingId: string, userId: string): Promise<boolean> {
+  await ensureMigrated(app)
+  const { rows } = await app.db.query(
+    "SELECT 1 FROM bookings WHERE listing_id = ? AND guest_id = ? AND status = 'completed' LIMIT 1",
+    [listingId, userId],
+  )
+  return rows.length > 0
+}
+
 export async function createBooking(
   data: Omit<Booking, 'id' | 'created_at' | 'status'>,
 ): Promise<string> {
   await ensureMigrated(app)
+  const { rows: conflicts } = await app.db.query(
+    `SELECT 1 FROM bookings WHERE listing_id = ? AND status IN ('pending','confirmed') AND check_in < ? AND check_out > ? LIMIT 1`,
+    [data.listing_id, data.check_out, data.check_in],
+  )
+  if (conflicts.length > 0) throw new Error('These dates overlap with an existing booking.')
   const id = uid()
   await app.db.execute(
     `INSERT INTO bookings (id, listing_id, guest_id, guest_name, check_in, check_out, guests, total_price, status, created_at)

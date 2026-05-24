@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { User } from '@proappstore/sdk'
-import { createListing } from '../lib/db'
+import { getListing, updateListing } from '../lib/db'
 import { app } from '../lib/app'
 
 const AMENITY_OPTIONS = [
@@ -9,13 +9,16 @@ const AMENITY_OPTIONS = [
   'Pets allowed', 'Smoke alarm', 'First aid kit', 'Self check-in',
 ]
 
-export function CreateListing({
+export function EditListing({
+  listingId,
   user,
   onNavigate,
 }: {
+  listingId: string
   user: User
   onNavigate: (hash: string) => void
 }) {
+  const [loading, setLoading] = useState(true)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState('')
@@ -24,13 +27,35 @@ export function CreateListing({
   const [bedrooms, setBedrooms] = useState(1)
   const [bathrooms, setBathrooms] = useState(1)
   const [amenities, setAmenities] = useState<string[]>([])
+  const [existingImages, setExistingImages] = useState<string[]>([])
   const [mediaFiles, setMediaFiles] = useState<File[]>([])
-  const [previews, setPreviews] = useState<string[]>([])
+  const [newPreviews, setNewPreviews] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [uploadProgress, setUploadProgress] = useState('')
 
+  useEffect(() => {
+    getListing(listingId).then((l) => {
+      if (!l) { onNavigate('#/host'); return }
+      if (l.host_id !== user.id) { onNavigate('#/host'); return }
+      setTitle(l.title)
+      setDescription(l.description)
+      setPrice(String(l.price_per_night))
+      setLocation(l.location)
+      setCapacity(l.capacity)
+      setBedrooms(l.bedrooms)
+      setBathrooms(l.bathrooms)
+      setAmenities(JSON.parse(l.amenities || '[]'))
+      setExistingImages(JSON.parse(l.images || '[]'))
+      setLoading(false)
+    })
+  }, [listingId, user.id, onNavigate])
+
   function toggleAmenity(a: string) {
     setAmenities((prev) => prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a])
+  }
+
+  function removeExistingImage(index: number) {
+    setExistingImages((prev) => prev.filter((_, i) => i !== index))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -53,20 +78,19 @@ export function CreateListing({
       }
     }
 
-    // Upload media to R2
-    const mediaUrls: string[] = []
+    // Upload new media files
+    const newUrls: string[] = []
     for (let i = 0; i < mediaFiles.length; i++) {
       const file = mediaFiles[i]
       setUploadProgress(`Uploading ${i + 1}/${mediaFiles.length}...`)
       const result = await app.storage.uploadPublic(`listings/${crypto.randomUUID()}`, file, file.type)
-      mediaUrls.push(result.url)
+      newUrls.push(result.url)
     }
     setUploadProgress('')
 
-    const id = await createListing({
-      host_id: user.id,
-      host_name: user.login,
-      host_avatar: user.avatarUrl || '',
+    const allImages = [...existingImages, ...newUrls]
+
+    await updateListing(listingId, {
       title,
       description,
       price_per_night: parseFloat(price),
@@ -77,10 +101,18 @@ export function CreateListing({
       bedrooms,
       bathrooms,
       amenities: JSON.stringify(amenities),
-      images: JSON.stringify(mediaUrls),
+      images: JSON.stringify(allImages),
     })
 
-    onNavigate(`#/listing/${id}`)
+    onNavigate(`#/listing/${listingId}`)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+      </div>
+    )
   }
 
   return (
@@ -90,7 +122,7 @@ export function CreateListing({
       </button>
 
       <h1 className="display-font text-2xl font-semibold" style={{ color: 'var(--ink)' }}>
-        Create a listing
+        Edit listing
       </h1>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-5">
@@ -188,8 +220,40 @@ export function CreateListing({
         {/* Photos & Videos */}
         <div>
           <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Photos & Videos</span>
+
+          {/* Existing images */}
+          {existingImages.length > 0 && (
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {existingImages.map((url, i) => {
+                const isVideo = /\.(mp4|mov|webm|ogg)$/i.test(url) || url.includes('video')
+                return (
+                  <div key={url} className="group relative aspect-square overflow-hidden rounded-lg" style={{ background: 'var(--paper-deep)' }}>
+                    {isVideo ? (
+                      <video src={url} className="h-full w-full object-cover" muted />
+                    ) : (
+                      <img src={url} alt="" className="h-full w-full object-cover" />
+                    )}
+                    {isVideo && (
+                      <div className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                        Video
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeExistingImage(i)}
+                      className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
+                    >
+                      x
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Upload new */}
           <label
-            className="mt-1 flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed p-6"
+            className="mt-2 flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed p-6"
             style={{ borderColor: 'var(--line)', color: 'var(--muted)' }}
           >
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -197,7 +261,7 @@ export function CreateListing({
               <polyline points="17 8 12 3 7 8" />
               <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
-            <span className="text-sm">Tap to upload photos or videos</span>
+            <span className="text-sm">Tap to upload more photos or videos</span>
             <input
               type="file"
               accept="image/*,video/*"
@@ -206,14 +270,16 @@ export function CreateListing({
               onChange={(e) => {
                 const files = Array.from(e.target.files || [])
                 setMediaFiles((prev) => [...prev, ...files])
-                const newPreviews = files.map((f) => URL.createObjectURL(f))
-                setPreviews((prev) => [...prev, ...newPreviews])
+                const previews = files.map((f) => URL.createObjectURL(f))
+                setNewPreviews((prev) => [...prev, ...previews])
               }}
             />
           </label>
-          {previews.length > 0 && (
+
+          {/* New file previews */}
+          {newPreviews.length > 0 && (
             <div className="mt-3 grid grid-cols-3 gap-2">
-              {previews.map((url, i) => {
+              {newPreviews.map((url, i) => {
                 const file = mediaFiles[i]
                 const isVideo = file?.type.startsWith('video/')
                 return (
@@ -233,11 +299,11 @@ export function CreateListing({
                       onClick={() => {
                         URL.revokeObjectURL(url)
                         setMediaFiles((prev) => prev.filter((_, j) => j !== i))
-                        setPreviews((prev) => prev.filter((_, j) => j !== i))
+                        setNewPreviews((prev) => prev.filter((_, j) => j !== i))
                       }}
                       className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
                     >
-                      ×
+                      x
                     </button>
                   </div>
                 )
@@ -274,7 +340,7 @@ export function CreateListing({
           className="w-full rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-50"
           style={{ background: 'var(--accent)' }}
         >
-          {saving ? (uploadProgress || 'Creating...') : 'Create listing'}
+          {saving ? (uploadProgress || 'Saving...') : 'Save changes'}
         </button>
       </form>
     </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { User } from '@proappstore/sdk'
 import type { Listing, Review } from '../types'
-import { getListing, getReviewsForListing, createBooking } from '../lib/db'
+import { getListing, getReviewsForListing, createBooking, createReview, hasCompletedBooking } from '../lib/db'
 
 export function ListingDetail({
   listingId,
@@ -22,6 +22,11 @@ export function ListingDetail({
   const [guests, setGuests] = useState(1)
   const [booking, setBooking] = useState(false)
   const [booked, setBooked] = useState(false)
+  const [bookError, setBookError] = useState('')
+  const [canReview, setCanReview] = useState(false)
+  const [reviewRating, setReviewRating] = useState(0)
+  const [reviewComment, setReviewComment] = useState('')
+  const [submittingReview, setSubmittingReview] = useState(false)
 
   useEffect(() => {
     Promise.all([getListing(listingId), getReviewsForListing(listingId)]).then(
@@ -32,6 +37,14 @@ export function ListingDetail({
       },
     )
   }, [listingId])
+
+  useEffect(() => {
+    if (user) {
+      hasCompletedBooking(listingId, user.id).then(setCanReview)
+    } else {
+      setCanReview(false)
+    }
+  }, [listingId, user])
 
   if (loading) {
     return (
@@ -67,17 +80,42 @@ export function ListingDetail({
     if (!user) { onSignIn(); return }
     if (!checkIn || !checkOut || nights <= 0) return
     setBooking(true)
-    await createBooking({
-      listing_id: listing!.id,
-      guest_id: user.id,
-      guest_name: user.login,
-      check_in: checkIn,
-      check_out: checkOut,
-      guests,
-      total_price: totalPrice,
-    })
-    setBooked(true)
+    setBookError('')
+    try {
+      await createBooking({
+        listing_id: listing!.id,
+        guest_id: user.id,
+        guest_name: user.login,
+        check_in: checkIn,
+        check_out: checkOut,
+        guests,
+        total_price: totalPrice,
+      })
+      setBooked(true)
+    } catch (err) {
+      setBookError(err instanceof Error ? err.message : 'Booking failed.')
+    }
     setBooking(false)
+  }
+
+  async function handleReview() {
+    if (!user || !reviewRating) return
+    setSubmittingReview(true)
+    await createReview({
+      listing_id: listingId,
+      booking_id: '',
+      author_id: user.id,
+      author_name: user.login,
+      author_avatar: user.avatarUrl || '',
+      rating: reviewRating,
+      comment: reviewComment,
+    })
+    const updated = await getReviewsForListing(listingId)
+    setReviews(updated)
+    setReviewRating(0)
+    setReviewComment('')
+    setSubmittingReview(false)
+    setCanReview(false)
   }
 
   const isOwner = user?.id === listing.host_id
@@ -149,6 +187,20 @@ export function ListingDetail({
             </p>
           </div>
 
+          {/* Map */}
+          {listing.lat !== 0 && listing.lng !== 0 && (
+            <div className="mt-6">
+              <h2 className="text-base font-semibold" style={{ color: 'var(--ink)' }}>Location</h2>
+              <div className="mt-2 overflow-hidden rounded-xl" style={{ border: '1px solid var(--line)' }}>
+                <iframe
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${listing.lng - 0.01},${listing.lat - 0.01},${listing.lng + 0.01},${listing.lat + 0.01}&layer=mapnik&marker=${listing.lat},${listing.lng}`}
+                  style={{ width: '100%', height: '300px', border: 'none' }}
+                  title="Listing location"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Amenities */}
           {amenities.length > 0 && (
             <div className="mt-6">
@@ -188,6 +240,44 @@ export function ListingDetail({
                     <p className="mt-1.5 text-sm" style={{ color: 'var(--muted)' }}>{r.comment}</p>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Leave a review */}
+          {canReview && (
+            <div className="mt-8">
+              <h2 className="text-base font-semibold" style={{ color: 'var(--ink)' }}>Leave a review</h2>
+              <div className="mt-3 rounded-xl p-4" style={{ background: 'var(--glass)', border: '1px solid var(--line)' }}>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewRating(star)}
+                      className="text-xl"
+                      style={{ color: star <= reviewRating ? 'var(--warning)' : 'var(--muted)', cursor: 'pointer', background: 'none', border: 'none', padding: '2px' }}
+                    >
+                      {star <= reviewRating ? '\u2605' : '\u2606'}
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="Share your experience..."
+                  rows={3}
+                  className="mt-3 w-full rounded-lg px-3 py-2 text-sm outline-none resize-none"
+                  style={{ background: 'var(--glass)', border: '1px solid var(--line)', color: 'var(--ink)' }}
+                />
+                <button
+                  onClick={handleReview}
+                  disabled={submittingReview || reviewRating === 0}
+                  className="mt-3 rounded-xl px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  style={{ background: 'var(--accent)' }}
+                >
+                  {submittingReview ? 'Submitting...' : 'Submit review'}
+                </button>
               </div>
             </div>
           )}
@@ -265,6 +355,9 @@ export function ListingDetail({
                 >
                   {booking ? 'Booking...' : user ? 'Request to book' : 'Sign in to book'}
                 </button>
+                {bookError && (
+                  <p className="mt-2 text-center text-sm" style={{ color: 'var(--error)' }}>{bookError}</p>
+                )}
               </>
             )}
           </div>

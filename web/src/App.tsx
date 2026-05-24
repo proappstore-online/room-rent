@@ -7,18 +7,22 @@ import { ListingDetail } from './pages/ListingDetail'
 import { CreateListing } from './pages/CreateListing'
 import { MyBookings } from './pages/MyBookings'
 import { HostDashboard } from './pages/HostDashboard'
+import { EditListing } from './pages/EditListing'
 
 type Route =
   | { name: 'browse' }
   | { name: 'listing'; id: string }
   | { name: 'host' }
   | { name: 'host-new' }
+  | { name: 'host-edit'; id: string }
   | { name: 'bookings' }
 
 function parseHash(): Route {
   const h = location.hash
   let m = h.match(/^#\/listing\/([\w-]+)$/)
   if (m) return { name: 'listing', id: m[1] }
+  m = h.match(/^#\/host\/edit\/([\w-]+)$/)
+  if (m) return { name: 'host-edit', id: m[1] }
   if (h === '#/host/new') return { name: 'host-new' }
   if (h === '#/host') return { name: 'host' }
   if (h === '#/bookings') return { name: 'bookings' }
@@ -60,10 +64,13 @@ export default function App() {
       {route.name === 'host-new' && user && (
         <CreateListing user={user} onNavigate={navigate} />
       )}
+      {route.name === 'host-edit' && user && (
+        <EditListing listingId={route.id} user={user} onNavigate={navigate} />
+      )}
       {route.name === 'bookings' && user && (
         <MyBookings user={user} onNavigate={navigate} />
       )}
-      {(route.name === 'host' || route.name === 'host-new' || route.name === 'bookings') && !user && (
+      {(route.name === 'host' || route.name === 'host-new' || route.name === 'host-edit' || route.name === 'bookings') && !user && (
         <div className="flex flex-col items-center justify-center py-20">
           <p className="text-sm" style={{ color: 'var(--muted)' }}>Sign in to continue.</p>
           <button

@@ -109,13 +109,22 @@ export function HostDashboard({
                     </button>
                     <p className="text-xs" style={{ color: 'var(--muted)' }}>{l.location} · ${l.price_per_night}/night</p>
                   </div>
-                  <button
-                    onClick={() => handleDelete(l.id)}
-                    className="rounded-lg px-2 py-1 text-xs font-medium"
-                    style={{ color: 'var(--error)', background: 'var(--glass)' }}
-                  >
-                    Delete
-                  </button>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => onNavigate(`#/host/edit/${l.id}`)}
+                      className="rounded-lg px-2 py-1 text-xs font-medium"
+                      style={{ color: 'var(--accent)', background: 'var(--glass)' }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(l.id)}
+                      className="rounded-lg px-2 py-1 text-xs font-medium"
+                      style={{ color: 'var(--error)', background: 'var(--glass)' }}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               )
             })}
