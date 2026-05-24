@@ -86,7 +86,7 @@ export function ListingCard({ listing, onClick, isFavorite, onToggleFavorite, av
           {listing.capacity} guest{listing.capacity !== 1 ? 's' : ''} · {listing.bedrooms} bed{listing.bedrooms !== 1 ? 's' : ''} · {listing.bathrooms} bath{listing.bathrooms !== 1 ? 's' : ''}
         </p>
         <p className="mt-2 text-sm font-semibold" style={{ color: 'var(--ink)' }}>
-          ${listing.price_per_night}<span className="font-normal" style={{ color: 'var(--muted)' }}> / night</span>
+          ${listing.price_per_night.toFixed(2)}<span className="font-normal" style={{ color: 'var(--muted)' }}> / night</span>
         </p>
       </div>
     </button>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useProAuth } from '@proappstore/sdk/hooks'
 import { app } from './lib/app'
 import { Header } from './components/Header'
@@ -47,9 +47,9 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
 
-  function navigate(hash: string) {
+  const navigate = useCallback((hash: string) => {
     location.hash = hash
-  }
+  }, [])
 
   if (loading) {
     return (

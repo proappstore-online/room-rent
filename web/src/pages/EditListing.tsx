@@ -19,6 +19,9 @@ export function EditListing({
   onNavigate: (hash: string) => void
 }) {
   const [loading, setLoading] = useState(true)
+  const [origLat, setOrigLat] = useState(0)
+  const [origLng, setOrigLng] = useState(0)
+  const [origLocation, setOrigLocation] = useState('')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState('')
@@ -48,6 +51,9 @@ export function EditListing({
       setDescription(l.description)
       setPrice(String(l.price_per_night))
       setLocation(l.location)
+      setOrigLocation(l.location)
+      setOrigLat(l.lat)
+      setOrigLng(l.lng)
       setCapacity(l.capacity)
       setBedrooms(l.bedrooms)
       setBathrooms(l.bathrooms)
@@ -76,10 +82,10 @@ export function EditListing({
     if (!title || !price) return
     setSaving(true)
 
-    // Geocode location
-    let lat = 0
-    let lng = 0
-    if (location.trim()) {
+    // Geocode location — keep existing coords if geocode fails
+    let lat = origLat
+    let lng = origLng
+    if (location.trim() && location !== origLocation) {
       try {
         const results = await app.maps.geocode(location.trim())
         if (results.length > 0) {
@@ -87,7 +93,7 @@ export function EditListing({
           lng = results[0].lng
         }
       } catch {
-        // fallback to 0,0
+        // keep existing coords
       }
     }
 

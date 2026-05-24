@@ -34,7 +34,7 @@ export function HostDashboard({
   }
 
   async function handleDelete(listingId: string) {
-    await deleteListing(listingId)
+    await deleteListing(listingId, user.id)
     setListings((prev) => prev.filter((l) => l.id !== listingId))
   }
 

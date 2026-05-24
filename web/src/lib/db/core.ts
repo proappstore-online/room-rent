@@ -1,6 +1,6 @@
 import type { ProAppStore } from '@proappstore/sdk'
 
-const migrations = [
+const migrations: { up: string; safe?: boolean }[] = [
   {
     up: `CREATE TABLE IF NOT EXISTS listings (
       id TEXT PRIMARY KEY,
@@ -64,13 +64,13 @@ const migrations = [
   {
     up: `CREATE INDEX IF NOT EXISTS idx_reviews_listing ON reviews(listing_id)`,
   },
-  { up: `ALTER TABLE listings ADD COLUMN house_rules TEXT NOT NULL DEFAULT '[]'` },
-  { up: `ALTER TABLE listings ADD COLUMN cancellation_policy TEXT NOT NULL DEFAULT 'flexible'` },
-  { up: `ALTER TABLE listings ADD COLUMN check_in_time TEXT NOT NULL DEFAULT '15:00'` },
-  { up: `ALTER TABLE listings ADD COLUMN check_out_time TEXT NOT NULL DEFAULT '11:00'` },
-  { up: `ALTER TABLE listings ADD COLUMN instant_book INTEGER NOT NULL DEFAULT 0` },
-  { up: `ALTER TABLE listings ADD COLUMN cleaning_fee REAL NOT NULL DEFAULT 0` },
-  { up: `ALTER TABLE listings ADD COLUMN service_fee_pct REAL NOT NULL DEFAULT 12` },
+  { up: `ALTER TABLE listings ADD COLUMN house_rules TEXT NOT NULL DEFAULT '[]'`, safe: true },
+  { up: `ALTER TABLE listings ADD COLUMN cancellation_policy TEXT NOT NULL DEFAULT 'flexible'`, safe: true },
+  { up: `ALTER TABLE listings ADD COLUMN check_in_time TEXT NOT NULL DEFAULT '15:00'`, safe: true },
+  { up: `ALTER TABLE listings ADD COLUMN check_out_time TEXT NOT NULL DEFAULT '11:00'`, safe: true },
+  { up: `ALTER TABLE listings ADD COLUMN instant_book INTEGER NOT NULL DEFAULT 0`, safe: true },
+  { up: `ALTER TABLE listings ADD COLUMN cleaning_fee REAL NOT NULL DEFAULT 0`, safe: true },
+  { up: `ALTER TABLE listings ADD COLUMN service_fee_pct REAL NOT NULL DEFAULT 12`, safe: true },
   {
     up: `CREATE TABLE IF NOT EXISTS favorites (
       user_id TEXT NOT NULL,
@@ -100,7 +100,11 @@ let migrated = false
 export async function ensureMigrated(app: ProAppStore) {
   if (migrated) return
   for (const m of migrations) {
-    await app.db.execute(m.up)
+    if (m.safe) {
+      try { await app.db.execute(m.up) } catch { /* column already exists */ }
+    } else {
+      await app.db.execute(m.up)
+    }
   }
   migrated = true
 }

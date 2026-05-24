@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { User } from '@proappstore/sdk'
 import type { Listing, Review } from '../types'
-import { getListing, getReviewsForListing, createBooking, createReview, hasCompletedBooking } from '../lib/db'
+import { getListing, getReviewsForListing, getBookingsForListing, createBooking, createReview, canLeaveReview } from '../lib/db'
 
 export function ListingDetail({
   listingId,
@@ -38,9 +38,19 @@ export function ListingDetail({
       .catch(() => { setLoading(false) })
   }, [listingId])
 
+  const [reviewBookingId, setReviewBookingId] = useState('')
+
   useEffect(() => {
     if (user) {
-      hasCompletedBooking(listingId, user.id).then(setCanReview)
+      canLeaveReview(listingId, user.id).then((can) => {
+        setCanReview(can)
+        if (can) {
+          getBookingsForListing(listingId).then((bs) => {
+            const completed = bs.find((b) => b.guest_id === user.id && b.status === 'completed')
+            if (completed) setReviewBookingId(completed.id)
+          })
+        }
+      })
     } else {
       setCanReview(false)
     }
@@ -107,21 +117,26 @@ export function ListingDetail({
   async function handleReview() {
     if (!user || !reviewRating) return
     setSubmittingReview(true)
-    await createReview({
-      listing_id: listingId,
-      booking_id: '',
-      author_id: user.id,
-      author_name: user.login,
-      author_avatar: user.avatarUrl || '',
-      rating: reviewRating,
-      comment: reviewComment,
-    })
-    const updated = await getReviewsForListing(listingId)
-    setReviews(updated)
-    setReviewRating(0)
-    setReviewComment('')
-    setSubmittingReview(false)
-    setCanReview(false)
+    try {
+      await createReview({
+        listing_id: listingId,
+        booking_id: reviewBookingId,
+        author_id: user.id,
+        author_name: user.login,
+        author_avatar: user.avatarUrl || '',
+        rating: reviewRating,
+        comment: reviewComment,
+      })
+      const updated = await getReviewsForListing(listingId)
+      setReviews(updated)
+      setReviewRating(0)
+      setReviewComment('')
+      setCanReview(false)
+    } catch {
+      setBookError('Failed to submit review.')
+    } finally {
+      setSubmittingReview(false)
+    }
   }
 
   const isOwner = user?.id === listing.host_id

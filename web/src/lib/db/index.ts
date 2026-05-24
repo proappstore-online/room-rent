@@ -45,11 +45,13 @@ export async function updateListing(
   data: Partial<Pick<Listing, 'title' | 'description' | 'price_per_night' | 'location' | 'lat' | 'lng' | 'capacity' | 'bedrooms' | 'bathrooms' | 'amenities' | 'images' | 'house_rules' | 'cancellation_policy' | 'check_in_time' | 'check_out_time' | 'instant_book' | 'cleaning_fee' | 'service_fee_pct'>>,
 ): Promise<void> {
   await ensureMigrated(app)
+  const ALLOWED_COLS = new Set(['title','description','price_per_night','location','lat','lng','capacity','bedrooms','bathrooms','amenities','images','house_rules','cancellation_policy','check_in_time','check_out_time','instant_book','cleaning_fee','service_fee_pct'])
   const sets: string[] = []
   const vals: unknown[] = []
   for (const [k, v] of Object.entries(data)) {
+    if (!ALLOWED_COLS.has(k)) continue
     sets.push(`${k} = ?`)
-    vals.push(v)
+    vals.push(k === 'instant_book' ? (v ? 1 : 0) : v)
   }
   sets.push('updated_at = ?')
   vals.push(Date.now())
@@ -57,18 +59,23 @@ export async function updateListing(
   await app.db.execute(`UPDATE listings SET ${sets.join(', ')} WHERE id = ?`, vals)
 }
 
-export async function deleteListing(id: string): Promise<void> {
+export async function deleteListing(id: string, hostId: string): Promise<void> {
   await ensureMigrated(app)
-  await app.db.execute('DELETE FROM listings WHERE id = ?', [id])
+  await app.db.execute('DELETE FROM favorites WHERE listing_id = ?', [id])
+  await app.db.execute('DELETE FROM messages WHERE listing_id = ?', [id])
+  await app.db.execute('DELETE FROM reviews WHERE listing_id = ?', [id])
+  await app.db.execute('DELETE FROM bookings WHERE listing_id = ?', [id])
+  await app.db.execute('DELETE FROM listings WHERE id = ? AND host_id = ?', [id, hostId])
 }
 
 // --- Bookings ---
 
-export async function hasCompletedBooking(listingId: string, userId: string): Promise<boolean> {
+export async function canLeaveReview(listingId: string, userId: string): Promise<boolean> {
   await ensureMigrated(app)
   const { rows } = await app.db.query(
-    "SELECT 1 FROM bookings WHERE listing_id = ? AND guest_id = ? AND status = 'completed' LIMIT 1",
-    [listingId, userId],
+    `SELECT 1 FROM bookings WHERE listing_id = ? AND guest_id = ? AND status = 'completed'
+     AND id NOT IN (SELECT booking_id FROM reviews WHERE author_id = ?) LIMIT 1`,
+    [listingId, userId, userId],
   )
   return rows.length > 0
 }
@@ -209,16 +216,21 @@ export async function getMessages(listingId: string, userId1: string, userId2: s
 export async function getConversations(userId: string): Promise<{ listing_id: string; listing_title: string; other_id: string; other_name: string; last_message: string; last_at: number }[]> {
   await ensureMigrated(app)
   const { rows } = await app.db.query(
-    `SELECT m.listing_id, l.title as listing_title,
-       CASE WHEN m.sender_id = ? THEN m.recipient_id ELSE m.sender_id END as other_id,
-       CASE WHEN m.sender_id = ? THEN '' ELSE m.sender_name END as other_name,
-       m.body as last_message, m.created_at as last_at
-     FROM messages m JOIN listings l ON m.listing_id = l.id
-     WHERE m.sender_id = ? OR m.recipient_id = ?
-     GROUP BY m.listing_id, other_id
-     HAVING m.created_at = MAX(m.created_at)
-     ORDER BY m.created_at DESC`,
-    [userId, userId, userId, userId],
+    `SELECT sub.listing_id, l.title as listing_title, sub.other_id,
+       m2.sender_name as other_name, m2.body as last_message, m2.created_at as last_at
+     FROM (
+       SELECT listing_id,
+         CASE WHEN sender_id = ? THEN recipient_id ELSE sender_id END as other_id,
+         MAX(created_at) as max_at
+       FROM messages
+       WHERE sender_id = ? OR recipient_id = ?
+       GROUP BY listing_id, other_id
+     ) sub
+     JOIN messages m2 ON m2.listing_id = sub.listing_id AND m2.created_at = sub.max_at
+       AND ((m2.sender_id = ? AND m2.recipient_id = sub.other_id) OR (m2.sender_id = sub.other_id AND m2.recipient_id = ?))
+     JOIN listings l ON l.id = sub.listing_id
+     ORDER BY sub.max_at DESC`,
+    [userId, userId, userId, userId, userId],
   )
   return rows as unknown as { listing_id: string; listing_title: string; other_id: string; other_name: string; last_message: string; last_at: number }[]
 }

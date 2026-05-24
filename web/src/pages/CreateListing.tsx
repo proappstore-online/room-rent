@@ -40,11 +40,15 @@ export function CreateListing({
     setAmenities((prev) => prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a])
   }
 
+  const [submitError, setSubmitError] = useState('')
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!title || !price) return
     setSaving(true)
+    setSubmitError('')
 
+    try {
     // Geocode location
     let lat = 0
     let lng = 0
@@ -95,6 +99,12 @@ export function CreateListing({
     })
 
     onNavigate(`#/listing/${id}`)
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to create listing.')
+    } finally {
+      setSaving(false)
+      setUploadProgress('')
+    }
   }
 
   return (
@@ -422,6 +432,9 @@ export function CreateListing({
         >
           {saving ? (uploadProgress || 'Creating...') : 'Create listing'}
         </button>
+        {submitError && (
+          <p className="mt-2 text-center text-sm" style={{ color: 'var(--error)' }}>{submitError}</p>
+        )}
       </form>
     </div>
   )
