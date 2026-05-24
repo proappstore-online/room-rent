@@ -32,7 +32,9 @@ export function Browse({ onNavigate, user }: { onNavigate: (hash: string) => voi
     (priceMin ? 1 : 0) + (priceMax ? 1 : 0) + (minGuests ? 1 : 0) + selectedAmenities.length
 
   useEffect(() => {
-    getListings().then((l) => { setListings(l); setLoading(false) })
+    getListings()
+      .then((l) => { setListings(l); setLoading(false) })
+      .catch(() => { setLoading(false) })
   }, [])
 
   useEffect(() => {

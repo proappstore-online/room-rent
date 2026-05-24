@@ -29,13 +29,13 @@ export function ListingDetail({
   const [submittingReview, setSubmittingReview] = useState(false)
 
   useEffect(() => {
-    Promise.all([getListing(listingId), getReviewsForListing(listingId)]).then(
-      ([l, r]) => {
+    Promise.all([getListing(listingId), getReviewsForListing(listingId)])
+      .then(([l, r]) => {
         setListing(l)
         setReviews(r)
         setLoading(false)
-      },
-    )
+      })
+      .catch(() => { setLoading(false) })
   }, [listingId])
 
   useEffect(() => {
