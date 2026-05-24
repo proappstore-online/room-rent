@@ -42,6 +42,20 @@ export function Header({
               >
                 Trips
               </button>
+              <button
+                onClick={() => onNavigate('#/wishlists')}
+                className="rounded-lg px-3 py-1.5 text-sm font-medium"
+                style={{ color: 'var(--muted)' }}
+              >
+                Wishlists
+              </button>
+              <button
+                onClick={() => onNavigate('#/messages')}
+                className="rounded-lg px-3 py-1.5 text-sm font-medium"
+                style={{ color: 'var(--muted)' }}
+              >
+                Messages
+              </button>
             </>
           )}
           {user ? (

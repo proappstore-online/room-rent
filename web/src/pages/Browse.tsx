@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react'
+import type { User } from '@proappstore/sdk'
 import type { Listing } from '../types'
-import { getListings } from '../lib/db'
+import { getListings, getFavorites, toggleFavorite } from '../lib/db'
 import { ListingCard } from '../components/ListingCard'
 
-export function Browse({ onNavigate }: { onNavigate: (hash: string) => void }) {
+type SortOption = 'newest' | 'price-asc' | 'price-desc'
+
+export function Browse({ onNavigate, user }: { onNavigate: (hash: string) => void; user: User | null }) {
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [sort, setSort] = useState<SortOption>('newest')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [priceMin, setPriceMin] = useState('')
   const [priceMax, setPriceMax] = useState('')
   const [minGuests, setMinGuests] = useState('')
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([])
+  const [favorites, setFavorites] = useState<Set<string>>(new Set())
 
   const AMENITY_OPTIONS = [
     'WiFi', 'Kitchen', 'Washer', 'Dryer', 'Air conditioning', 'Heating',
@@ -30,6 +35,14 @@ export function Browse({ onNavigate }: { onNavigate: (hash: string) => void }) {
     getListings().then((l) => { setListings(l); setLoading(false) })
   }, [])
 
+  useEffect(() => {
+    if (user) {
+      getFavorites(user.id).then((ids) => setFavorites(new Set(ids)))
+    } else {
+      setFavorites(new Set())
+    }
+  }, [user])
+
   const filtered = listings.filter((l) => {
     if (search) {
       const q = search.toLowerCase()
@@ -43,7 +56,20 @@ export function Browse({ onNavigate }: { onNavigate: (hash: string) => void }) {
       if (!selectedAmenities.every((a) => listingAmenities.includes(a))) return false
     }
     return true
+  }).sort((a, b) => {
+    if (sort === 'price-asc') return a.price_per_night - b.price_per_night
+    if (sort === 'price-desc') return b.price_per_night - a.price_per_night
+    return b.created_at - a.created_at // newest
   })
+
+  function handleToggleFavorite(listingId: string) {
+    if (!user) return
+    const next = new Set(favorites)
+    if (next.has(listingId)) next.delete(listingId)
+    else next.add(listingId)
+    setFavorites(next)
+    toggleFavorite(user.id, listingId)
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
@@ -66,26 +92,38 @@ export function Browse({ onNavigate }: { onNavigate: (hash: string) => void }) {
           />
         </div>
 
-        {/* Filters toggle */}
-        <button
-          type="button"
-          onClick={() => setFiltersOpen((o) => !o)}
-          className="mt-2 flex items-center gap-1.5 text-sm font-medium"
-          style={{ color: 'var(--accent)' }}
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            style={{ transform: filtersOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+        {/* Filters toggle + Sort */}
+        <div className="mt-2 flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((o) => !o)}
+            className="flex items-center gap-1.5 text-sm font-medium"
+            style={{ color: 'var(--accent)' }}
           >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-          Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-        </button>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              style={{ transform: filtersOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+            Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+          </button>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortOption)}
+            className="rounded-lg px-3 py-1.5 text-sm outline-none"
+            style={{ background: 'var(--glass)', border: '1px solid var(--line)', color: 'var(--ink)' }}
+          >
+            <option value="newest">Newest</option>
+            <option value="price-asc">Price: Low to High</option>
+            <option value="price-desc">Price: High to Low</option>
+          </select>
+        </div>
 
         {filtersOpen && (
           <div
@@ -186,6 +224,8 @@ export function Browse({ onNavigate }: { onNavigate: (hash: string) => void }) {
               key={listing.id}
               listing={listing}
               onClick={() => onNavigate(`#/listing/${listing.id}`)}
+              isFavorite={favorites.has(listing.id)}
+              onToggleFavorite={user ? () => handleToggleFavorite(listing.id) : undefined}
             />
           ))}
         </div>

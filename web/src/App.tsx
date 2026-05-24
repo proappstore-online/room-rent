@@ -8,6 +8,8 @@ import { CreateListing } from './pages/CreateListing'
 import { MyBookings } from './pages/MyBookings'
 import { HostDashboard } from './pages/HostDashboard'
 import { EditListing } from './pages/EditListing'
+import { Wishlists } from './pages/Wishlists'
+import { Messages } from './pages/Messages'
 
 type Route =
   | { name: 'browse' }
@@ -16,6 +18,8 @@ type Route =
   | { name: 'host-new' }
   | { name: 'host-edit'; id: string }
   | { name: 'bookings' }
+  | { name: 'wishlists' }
+  | { name: 'messages'; listingId?: string; recipientId?: string }
 
 function parseHash(): Route {
   const h = location.hash
@@ -26,6 +30,10 @@ function parseHash(): Route {
   if (h === '#/host/new') return { name: 'host-new' }
   if (h === '#/host') return { name: 'host' }
   if (h === '#/bookings') return { name: 'bookings' }
+  if (h === '#/wishlists') return { name: 'wishlists' }
+  m = h.match(/^#\/messages\/([\w-]+)\/([\w-]+)$/)
+  if (m) return { name: 'messages', listingId: m[1], recipientId: m[2] }
+  if (h === '#/messages') return { name: 'messages' }
   return { name: 'browse' }
 }
 
@@ -54,7 +62,7 @@ export default function App() {
   return (
     <>
       <Header user={user} onSignIn={signIn} onSignOut={signOut} onNavigate={navigate} />
-      {route.name === 'browse' && <Browse onNavigate={navigate} />}
+      {route.name === 'browse' && <Browse onNavigate={navigate} user={user} />}
       {route.name === 'listing' && (
         <ListingDetail listingId={route.id} user={user} onSignIn={signIn} onNavigate={navigate} />
       )}
@@ -70,7 +78,13 @@ export default function App() {
       {route.name === 'bookings' && user && (
         <MyBookings user={user} onNavigate={navigate} />
       )}
-      {(route.name === 'host' || route.name === 'host-new' || route.name === 'host-edit' || route.name === 'bookings') && !user && (
+      {route.name === 'wishlists' && user && (
+        <Wishlists user={user} onNavigate={navigate} />
+      )}
+      {route.name === 'messages' && user && (
+        <Messages user={user} onNavigate={navigate} listingId={route.listingId} recipientId={route.recipientId} />
+      )}
+      {(route.name === 'host' || route.name === 'host-new' || route.name === 'host-edit' || route.name === 'bookings' || route.name === 'wishlists' || route.name === 'messages') && !user && (
         <div className="flex flex-col items-center justify-center py-20">
           <p className="text-sm" style={{ color: 'var(--muted)' }}>Sign in to continue.</p>
           <button

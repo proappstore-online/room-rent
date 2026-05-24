@@ -15,9 +15,9 @@ export async function createListing(
   const id = uid()
   const now = Date.now()
   await app.db.execute(
-    `INSERT INTO listings (id, host_id, host_name, host_avatar, title, description, price_per_night, location, lat, lng, capacity, bedrooms, bathrooms, amenities, images, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, data.host_id, data.host_name, data.host_avatar, data.title, data.description, data.price_per_night, data.location, data.lat, data.lng, data.capacity, data.bedrooms, data.bathrooms, data.amenities, data.images, now, now],
+    `INSERT INTO listings (id, host_id, host_name, host_avatar, title, description, price_per_night, location, lat, lng, capacity, bedrooms, bathrooms, amenities, images, house_rules, cancellation_policy, check_in_time, check_out_time, instant_book, cleaning_fee, service_fee_pct, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id, data.host_id, data.host_name, data.host_avatar, data.title, data.description, data.price_per_night, data.location, data.lat, data.lng, data.capacity, data.bedrooms, data.bathrooms, data.amenities, data.images, data.house_rules, data.cancellation_policy, data.check_in_time, data.check_out_time, data.instant_book ? 1 : 0, data.cleaning_fee, data.service_fee_pct, now, now],
   )
   return id
 }
@@ -42,7 +42,7 @@ export async function getMyListings(hostId: string): Promise<Listing[]> {
 
 export async function updateListing(
   id: string,
-  data: Partial<Pick<Listing, 'title' | 'description' | 'price_per_night' | 'location' | 'lat' | 'lng' | 'capacity' | 'bedrooms' | 'bathrooms' | 'amenities' | 'images'>>,
+  data: Partial<Pick<Listing, 'title' | 'description' | 'price_per_night' | 'location' | 'lat' | 'lng' | 'capacity' | 'bedrooms' | 'bathrooms' | 'amenities' | 'images' | 'house_rules' | 'cancellation_policy' | 'check_in_time' | 'check_out_time' | 'instant_book' | 'cleaning_fee' | 'service_fee_pct'>>,
 ): Promise<void> {
   await ensureMigrated(app)
   const sets: string[] = []
@@ -149,4 +149,76 @@ export async function getReviewsForListing(listingId: string): Promise<Review[]>
     [listingId],
   )
   return rows as unknown as Review[]
+}
+
+// --- Favorites ---
+
+export async function toggleFavorite(userId: string, listingId: string): Promise<boolean> {
+  await ensureMigrated(app)
+  const { rows } = await app.db.query(
+    'SELECT 1 FROM favorites WHERE user_id = ? AND listing_id = ?',
+    [userId, listingId],
+  )
+  if (rows.length > 0) {
+    await app.db.execute('DELETE FROM favorites WHERE user_id = ? AND listing_id = ?', [userId, listingId])
+    return false
+  }
+  await app.db.execute(
+    'INSERT INTO favorites (user_id, listing_id, created_at) VALUES (?, ?, ?)',
+    [userId, listingId, Date.now()],
+  )
+  return true
+}
+
+export async function getFavorites(userId: string): Promise<string[]> {
+  await ensureMigrated(app)
+  const { rows } = await app.db.query('SELECT listing_id FROM favorites WHERE user_id = ?', [userId])
+  return (rows as unknown as { listing_id: string }[]).map((r) => r.listing_id)
+}
+
+export async function getFavoriteListings(userId: string): Promise<Listing[]> {
+  await ensureMigrated(app)
+  const { rows } = await app.db.query(
+    'SELECT l.* FROM listings l JOIN favorites f ON l.id = f.listing_id WHERE f.user_id = ? ORDER BY f.created_at DESC',
+    [userId],
+  )
+  return rows as unknown as Listing[]
+}
+
+// --- Messages ---
+
+export async function sendMessage(data: { listing_id: string; sender_id: string; sender_name: string; recipient_id: string; body: string }): Promise<string> {
+  await ensureMigrated(app)
+  const id = uid()
+  await app.db.execute(
+    'INSERT INTO messages (id, listing_id, sender_id, sender_name, recipient_id, body, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [id, data.listing_id, data.sender_id, data.sender_name, data.recipient_id, data.body, Date.now()],
+  )
+  return id
+}
+
+export async function getMessages(listingId: string, userId1: string, userId2: string): Promise<{ id: string; listing_id: string; sender_id: string; sender_name: string; recipient_id: string; body: string; created_at: number }[]> {
+  await ensureMigrated(app)
+  const { rows } = await app.db.query(
+    `SELECT * FROM messages WHERE listing_id = ? AND ((sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)) ORDER BY created_at ASC`,
+    [listingId, userId1, userId2, userId2, userId1],
+  )
+  return rows as unknown as { id: string; listing_id: string; sender_id: string; sender_name: string; recipient_id: string; body: string; created_at: number }[]
+}
+
+export async function getConversations(userId: string): Promise<{ listing_id: string; listing_title: string; other_id: string; other_name: string; last_message: string; last_at: number }[]> {
+  await ensureMigrated(app)
+  const { rows } = await app.db.query(
+    `SELECT m.listing_id, l.title as listing_title,
+       CASE WHEN m.sender_id = ? THEN m.recipient_id ELSE m.sender_id END as other_id,
+       CASE WHEN m.sender_id = ? THEN '' ELSE m.sender_name END as other_name,
+       m.body as last_message, m.created_at as last_at
+     FROM messages m JOIN listings l ON m.listing_id = l.id
+     WHERE m.sender_id = ? OR m.recipient_id = ?
+     GROUP BY m.listing_id, other_id
+     HAVING m.created_at = MAX(m.created_at)
+     ORDER BY m.created_at DESC`,
+    [userId, userId, userId, userId],
+  )
+  return rows as unknown as { listing_id: string; listing_title: string; other_id: string; other_name: string; last_message: string; last_at: number }[]
 }

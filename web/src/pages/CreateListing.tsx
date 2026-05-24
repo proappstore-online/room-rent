@@ -26,6 +26,13 @@ export function CreateListing({
   const [amenities, setAmenities] = useState<string[]>([])
   const [mediaFiles, setMediaFiles] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
+  const [rules, setRules] = useState<string[]>([])
+  const [ruleInput, setRuleInput] = useState('')
+  const [cancellationPolicy, setCancellationPolicy] = useState<'flexible' | 'moderate' | 'strict'>('flexible')
+  const [checkInTime, setCheckInTime] = useState('15:00')
+  const [checkOutTime, setCheckOutTime] = useState('11:00')
+  const [instantBook, setInstantBook] = useState(false)
+  const [cleaningFee, setCleaningFee] = useState('')
   const [saving, setSaving] = useState(false)
   const [uploadProgress, setUploadProgress] = useState('')
 
@@ -78,6 +85,13 @@ export function CreateListing({
       bathrooms,
       amenities: JSON.stringify(amenities),
       images: JSON.stringify(mediaUrls),
+      house_rules: JSON.stringify(rules),
+      cancellation_policy: cancellationPolicy,
+      check_in_time: checkInTime,
+      check_out_time: checkOutTime,
+      instant_book: instantBook,
+      cleaning_fee: parseFloat(cleaningFee || '0'),
+      service_fee_pct: 12,
     })
 
     onNavigate(`#/listing/${id}`)
@@ -267,6 +281,138 @@ export function CreateListing({
             ))}
           </div>
         </div>
+
+        {/* House rules */}
+        <div>
+          <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>House rules</span>
+          <div className="mt-1 flex gap-2">
+            <input
+              type="text"
+              value={ruleInput}
+              onChange={(e) => setRuleInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  if (ruleInput.trim()) {
+                    setRules((prev) => [...prev, ruleInput.trim()])
+                    setRuleInput('')
+                  }
+                }
+              }}
+              placeholder="e.g. No smoking"
+              className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none"
+              style={{ background: 'var(--glass)', border: '1px solid var(--line)', color: 'var(--ink)' }}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (ruleInput.trim()) {
+                  setRules((prev) => [...prev, ruleInput.trim()])
+                  setRuleInput('')
+                }
+              }}
+              className="rounded-xl px-4 py-2.5 text-sm font-medium"
+              style={{ background: 'var(--glass)', border: '1px solid var(--line)', color: 'var(--ink)' }}
+            >
+              Add
+            </button>
+          </div>
+          {rules.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {rules.map((rule, i) => (
+                <span key={i} className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium" style={{ background: 'var(--glass)', border: '1px solid var(--line)', color: 'var(--ink)' }}>
+                  {rule}
+                  <button type="button" onClick={() => setRules((prev) => prev.filter((_, j) => j !== i))} className="ml-0.5 text-xs" style={{ color: 'var(--muted)' }}>×</button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Cancellation policy */}
+        <label className="block">
+          <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Cancellation policy</span>
+          <select
+            value={cancellationPolicy}
+            onChange={(e) => setCancellationPolicy(e.target.value as 'flexible' | 'moderate' | 'strict')}
+            className="mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+            style={{ background: 'var(--glass)', border: '1px solid var(--line)', color: 'var(--ink)' }}
+          >
+            <option value="flexible">Flexible</option>
+            <option value="moderate">Moderate</option>
+            <option value="strict">Strict</option>
+          </select>
+        </label>
+
+        {/* Check-in / Check-out times */}
+        <div className="grid grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Check-in time</span>
+            <input
+              type="time"
+              value={checkInTime}
+              onChange={(e) => setCheckInTime(e.target.value)}
+              className="mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+              style={{ background: 'var(--glass)', border: '1px solid var(--line)', color: 'var(--ink)' }}
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Check-out time</span>
+            <input
+              type="time"
+              value={checkOutTime}
+              onChange={(e) => setCheckOutTime(e.target.value)}
+              className="mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+              style={{ background: 'var(--glass)', border: '1px solid var(--line)', color: 'var(--ink)' }}
+            />
+          </label>
+        </div>
+
+        {/* Instant book + Cleaning fee */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Instant book</span>
+            <label className="mt-1 flex items-center gap-3 cursor-pointer">
+              <div
+                onClick={() => setInstantBook(!instantBook)}
+                className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+                style={{ background: instantBook ? 'var(--accent)' : 'var(--line)' }}
+              >
+                <span
+                  className="inline-block h-4 w-4 rounded-full bg-white transition-transform"
+                  style={{ transform: instantBook ? 'translateX(24px)' : 'translateX(4px)' }}
+                />
+              </div>
+              <span className="text-sm" style={{ color: 'var(--muted)' }}>{instantBook ? 'On' : 'Off'}</span>
+            </label>
+          </div>
+          <label className="block">
+            <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Cleaning fee ($)</span>
+            <input
+              type="number"
+              value={cleaningFee}
+              onChange={(e) => setCleaningFee(e.target.value)}
+              min="0"
+              step="0.01"
+              placeholder="0"
+              className="mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+              style={{ background: 'var(--glass)', border: '1px solid var(--line)', color: 'var(--ink)' }}
+            />
+          </label>
+        </div>
+
+        {/* Service fee */}
+        <label className="block">
+          <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Platform service fee</span>
+          <input
+            type="number"
+            value={12}
+            readOnly
+            className="mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+            style={{ background: 'var(--paper-deep)', border: '1px solid var(--line)', color: 'var(--muted)' }}
+          />
+          <span className="mt-1 block text-xs" style={{ color: 'var(--muted)' }}>Service fee is 12% and cannot be changed.</span>
+        </label>
 
         <button
           type="submit"

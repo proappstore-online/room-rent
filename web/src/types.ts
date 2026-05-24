@@ -14,6 +14,13 @@ export interface Listing {
   bathrooms: number
   amenities: string // JSON array
   images: string // JSON array of storage URLs
+  house_rules: string // JSON array of strings
+  cancellation_policy: 'flexible' | 'moderate' | 'strict'
+  check_in_time: string // e.g. "15:00"
+  check_out_time: string // e.g. "11:00"
+  instant_book: boolean
+  cleaning_fee: number
+  service_fee_pct: number // percentage, e.g. 12
   created_at: number
   updated_at: number
 }

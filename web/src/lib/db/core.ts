@@ -64,6 +64,35 @@ const migrations = [
   {
     up: `CREATE INDEX IF NOT EXISTS idx_reviews_listing ON reviews(listing_id)`,
   },
+  { up: `ALTER TABLE listings ADD COLUMN house_rules TEXT NOT NULL DEFAULT '[]'` },
+  { up: `ALTER TABLE listings ADD COLUMN cancellation_policy TEXT NOT NULL DEFAULT 'flexible'` },
+  { up: `ALTER TABLE listings ADD COLUMN check_in_time TEXT NOT NULL DEFAULT '15:00'` },
+  { up: `ALTER TABLE listings ADD COLUMN check_out_time TEXT NOT NULL DEFAULT '11:00'` },
+  { up: `ALTER TABLE listings ADD COLUMN instant_book INTEGER NOT NULL DEFAULT 0` },
+  { up: `ALTER TABLE listings ADD COLUMN cleaning_fee REAL NOT NULL DEFAULT 0` },
+  { up: `ALTER TABLE listings ADD COLUMN service_fee_pct REAL NOT NULL DEFAULT 12` },
+  {
+    up: `CREATE TABLE IF NOT EXISTS favorites (
+      user_id TEXT NOT NULL,
+      listing_id TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY (user_id, listing_id)
+    )`,
+  },
+  { up: `CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites(user_id)` },
+  {
+    up: `CREATE TABLE IF NOT EXISTS messages (
+      id TEXT PRIMARY KEY,
+      listing_id TEXT NOT NULL,
+      sender_id TEXT NOT NULL,
+      sender_name TEXT NOT NULL DEFAULT '',
+      recipient_id TEXT NOT NULL,
+      body TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )`,
+  },
+  { up: `CREATE INDEX IF NOT EXISTS idx_messages_listing ON messages(listing_id)` },
+  { up: `CREATE INDEX IF NOT EXISTS idx_messages_recipient ON messages(recipient_id)` },
 ]
 
 let migrated = false

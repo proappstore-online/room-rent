@@ -71,10 +71,16 @@ export function ListingDetail({
     ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
     : null
 
+  const houseRules: string[] = JSON.parse(listing.house_rules || '[]')
+
   const nights = checkIn && checkOut
     ? Math.max(0, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000))
     : 0
-  const totalPrice = nights * listing.price_per_night
+  const nightsSubtotal = nights * listing.price_per_night
+  const cleaningFee = listing.cleaning_fee || 0
+  const serviceFeeRate = (listing.service_fee_pct || 12) / 100
+  const serviceFee = (nightsSubtotal + cleaningFee) * serviceFeeRate
+  const totalPrice = nightsSubtotal + cleaningFee + serviceFee
 
   async function handleBook() {
     if (!user) { onSignIn(); return }
@@ -215,6 +221,44 @@ export function ListingDetail({
             </div>
           )}
 
+          {/* House rules */}
+          {houseRules.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-base font-semibold" style={{ color: 'var(--ink)' }}>House rules</h2>
+              <ul className="mt-2 space-y-1">
+                {houseRules.map((rule, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm" style={{ color: 'var(--muted)' }}>
+                    <span style={{ color: 'var(--ink)' }}>·</span>
+                    {rule}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Policies */}
+          <div className="mt-6">
+            <h2 className="text-base font-semibold" style={{ color: 'var(--ink)' }}>Policies</h2>
+            <div className="mt-2 space-y-2 text-sm" style={{ color: 'var(--muted)' }}>
+              <div className="flex gap-4">
+                <span>Check-in: <span style={{ color: 'var(--ink)' }}>{listing.check_in_time || '15:00'}</span></span>
+                <span>Check-out: <span style={{ color: 'var(--ink)' }}>{listing.check_out_time || '11:00'}</span></span>
+              </div>
+              <div>
+                <span className="font-medium" style={{ color: 'var(--ink)' }}>
+                  {listing.cancellation_policy === 'strict' ? 'Strict' : listing.cancellation_policy === 'moderate' ? 'Moderate' : 'Flexible'} cancellation
+                </span>
+                <span className="ml-1">
+                  {listing.cancellation_policy === 'strict'
+                    ? '— 50% refund up to 1 week before check-in'
+                    : listing.cancellation_policy === 'moderate'
+                    ? '— Free cancellation up to 5 days before check-in'
+                    : '— Free cancellation up to 24 hours before check-in'}
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Reviews */}
           {reviews.length > 0 && (
             <div className="mt-8">
@@ -341,9 +385,32 @@ export function ListingDetail({
                 </label>
 
                 {nights > 0 && (
-                  <div className="mt-3 flex justify-between text-sm" style={{ color: 'var(--ink)' }}>
-                    <span>{nights} night{nights !== 1 ? 's' : ''}</span>
-                    <span className="font-semibold">${totalPrice.toFixed(2)}</span>
+                  <div className="mt-3 space-y-1 text-sm" style={{ color: 'var(--ink)' }}>
+                    <div className="flex justify-between">
+                      <span>${listing.price_per_night.toFixed(2)} × {nights} night{nights !== 1 ? 's' : ''}</span>
+                      <span>${nightsSubtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between" style={{ color: 'var(--muted)' }}>
+                      <span>Cleaning fee</span>
+                      <span>${cleaningFee.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between" style={{ color: 'var(--muted)' }}>
+                      <span>Service fee ({listing.service_fee_pct || 12}%)</span>
+                      <span>${serviceFee.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-1 font-semibold" style={{ borderColor: 'var(--line)' }}>
+                      <span>Total</span>
+                      <span>${totalPrice.toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {listing.instant_book && (
+                  <div className="mt-3 flex items-center gap-1.5">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--accent)' }}>
+                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                    </svg>
+                    <span className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>Instant Book</span>
                   </div>
                 )}
 
@@ -353,7 +420,7 @@ export function ListingDetail({
                   className="mt-4 w-full rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-50"
                   style={{ background: 'var(--accent)' }}
                 >
-                  {booking ? 'Booking...' : user ? 'Request to book' : 'Sign in to book'}
+                  {booking ? 'Booking...' : user ? (listing.instant_book ? 'Book now' : 'Request to book') : 'Sign in to book'}
                 </button>
                 {bookError && (
                   <p className="mt-2 text-center text-sm" style={{ color: 'var(--error)' }}>{bookError}</p>
