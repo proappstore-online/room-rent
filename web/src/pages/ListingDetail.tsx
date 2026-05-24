@@ -88,14 +88,21 @@ export function ListingDetail({
         &larr; Back
       </button>
 
-      {/* Images */}
+      {/* Media */}
       {images.length > 0 ? (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {images.slice(0, 4).map((img, i) => (
-            <div key={i} className={`overflow-hidden rounded-xl ${i === 0 ? 'sm:col-span-2 aspect-[16/9]' : 'aspect-[4/3]'}`}>
-              <img src={img} alt="" className="h-full w-full object-cover" />
-            </div>
-          ))}
+          {images.slice(0, 4).map((url, i) => {
+            const isVideo = /\.(mp4|mov|webm|ogg)$/i.test(url) || url.includes('video')
+            return (
+              <div key={i} className={`overflow-hidden rounded-xl ${i === 0 ? 'sm:col-span-2 aspect-[16/9]' : 'aspect-[4/3]'}`}>
+                {isVideo ? (
+                  <video src={url} controls playsInline className="h-full w-full object-cover" />
+                ) : (
+                  <img src={url} alt="" className="h-full w-full object-cover" />
+                )}
+              </div>
+            )
+          })}
         </div>
       ) : (
         <div className="flex aspect-[16/9] items-center justify-center rounded-xl" style={{ background: 'var(--paper-deep)' }}>

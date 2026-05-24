@@ -1,8 +1,9 @@
 import type { Listing } from '../types'
 
 export function ListingCard({ listing, onClick }: { listing: Listing; onClick: () => void }) {
-  const images: string[] = JSON.parse(listing.images || '[]')
-  const thumb = images[0]
+  const media: string[] = JSON.parse(listing.images || '[]')
+  const thumb = media[0]
+  const isVideo = thumb && (/\.(mp4|mov|webm|ogg)$/i.test(thumb) || thumb.includes('video'))
 
   return (
     <button
@@ -10,9 +11,16 @@ export function ListingCard({ listing, onClick }: { listing: Listing; onClick: (
       className="w-full rounded-2xl text-left transition-shadow hover:shadow-lg"
       style={{ background: 'var(--panel-strong)', border: '1px solid var(--line)' }}
     >
-      <div className="aspect-[4/3] overflow-hidden rounded-t-2xl" style={{ background: 'var(--paper-deep)' }}>
+      <div className="relative aspect-[4/3] overflow-hidden rounded-t-2xl" style={{ background: 'var(--paper-deep)' }}>
         {thumb ? (
-          <img src={thumb} alt={listing.title} className="h-full w-full object-cover" />
+          isVideo ? (
+            <>
+              <video src={thumb} muted playsInline className="h-full w-full object-cover" />
+              <div className="absolute bottom-2 left-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">Video</div>
+            </>
+          ) : (
+            <img src={thumb} alt={listing.title} className="h-full w-full object-cover" />
+          )
         ) : (
           <div className="flex h-full items-center justify-center" style={{ color: 'var(--muted)' }}>
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
