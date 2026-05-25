@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { User } from '@proappstore/sdk'
 import type { Listing } from '../types'
-import { getFavoriteListings } from '../lib/db'
+import { getFavoriteListings, toggleFavorite } from '../lib/db'
 import { ListingCard } from '../components/ListingCard'
 
 export function Wishlists({
@@ -15,8 +15,15 @@ export function Wishlists({
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getFavoriteListings(user.id).then((l) => { setListings(l); setLoading(false) })
+    getFavoriteListings(user.id)
+      .then((l) => { setListings(l); setLoading(false) })
+      .catch(() => { setLoading(false) })
   }, [user.id])
+
+  async function handleUnfavorite(listingId: string) {
+    await toggleFavorite(user.id, listingId)
+    setListings((prev) => prev.filter((l) => l.id !== listingId))
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
@@ -42,6 +49,8 @@ export function Wishlists({
               key={listing.id}
               listing={listing}
               onClick={() => onNavigate(`#/listing/${listing.id}`)}
+              isFavorite={true}
+              onToggleFavorite={() => handleUnfavorite(listing.id)}
             />
           ))}
         </div>

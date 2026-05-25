@@ -10,7 +10,9 @@ function parseIcalDate(raw: string): string {
   return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`
 }
 
-export function parseIcal(text: string): BlockedRange[] {
+export function parseIcal(rawText: string): BlockedRange[] {
+  // Unfold RFC 5545 line continuations (CRLF + whitespace)
+  const text = rawText.replace(/\r?\n[ \t]/g, '')
   const today = new Date().toISOString().split('T')[0]
   const ranges: BlockedRange[] = []
   const events = text.split('BEGIN:VEVENT')

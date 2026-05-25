@@ -102,7 +102,7 @@ export default function App() {
       {(route.name === 'host' || route.name === 'host-new' || route.name === 'host-edit' || route.name === 'bookings' || route.name === 'wishlists' || route.name === 'messages' || route.name === 'seed') && !user && (
         <SignIn />
       )}
-      <BottomNav user={user} onNavigate={navigate} onSignIn={() => navigate('#/signin')} activeRoute={route.name} />
+      <BottomNav user={user} onNavigate={navigate} onSignIn={() => navigate('#/signin')} activeRoute={route.name.startsWith('host') ? 'host' : route.name} />
     </>
   )
 }

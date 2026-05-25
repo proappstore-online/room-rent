@@ -3,7 +3,6 @@ import type { User } from '@proappstore/sdk'
 import type { Listing, Review } from '../types'
 import { getListing, getReviewsForListing, getBookingsForListing, createBooking, createReview, canLeaveReview } from '../lib/db'
 import { parseIcal, isDateBlocked, type BlockedRange } from '../lib/ical'
-import { app } from '../lib/app'
 
 export function ListingDetail({
   listingId,
@@ -37,7 +36,8 @@ export function ListingDetail({
         setLoading(false)
         if (l?.ical_url) {
           try {
-            const res = await app.proxy.fetch(l.ical_url)
+            // iCal URLs don't have CORS headers — proxy through the platform API
+            const res = await fetch(`https://api.proappstore.online/v1/proxy?url=${encodeURIComponent(l.ical_url)}`)
             if (res.ok) {
               const text = await res.text()
               setBlockedDates(parseIcal(text))
