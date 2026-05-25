@@ -71,6 +71,7 @@ const migrations: { up: string; safe?: boolean }[] = [
   { up: `ALTER TABLE listings ADD COLUMN instant_book INTEGER NOT NULL DEFAULT 0`, safe: true },
   { up: `ALTER TABLE listings ADD COLUMN cleaning_fee REAL NOT NULL DEFAULT 0`, safe: true },
   { up: `ALTER TABLE listings ADD COLUMN service_fee_pct REAL NOT NULL DEFAULT 12`, safe: true },
+  { up: `ALTER TABLE listings ADD COLUMN ical_url TEXT NOT NULL DEFAULT ''`, safe: true },
   {
     up: `CREATE TABLE IF NOT EXISTS favorites (
       user_id TEXT NOT NULL,

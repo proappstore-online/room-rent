@@ -12,6 +12,7 @@ import { EditListing } from './pages/EditListing'
 import { Wishlists } from './pages/Wishlists'
 import { Messages } from './pages/Messages'
 import { SignIn } from './pages/SignIn'
+import { SeedListings } from './pages/SeedListings'
 
 type Route =
   | { name: 'browse' }
@@ -23,6 +24,7 @@ type Route =
   | { name: 'wishlists' }
   | { name: 'messages'; listingId?: string; recipientId?: string }
   | { name: 'signin' }
+  | { name: 'seed' }
 
 function parseHash(): Route {
   const h = location.hash
@@ -38,6 +40,7 @@ function parseHash(): Route {
   if (m) return { name: 'messages', listingId: m[1], recipientId: m[2] }
   if (h === '#/messages') return { name: 'messages' }
   if (h === '#/signin') return { name: 'signin' }
+  if (h === '#/seed') return { name: 'seed' }
   return { name: 'browse' }
 }
 
@@ -92,8 +95,11 @@ export default function App() {
       {route.name === 'messages' && user && (
         <Messages user={user} onNavigate={navigate} listingId={route.listingId} recipientId={route.recipientId} />
       )}
+      {route.name === 'seed' && user && (
+        <SeedListings user={user} onNavigate={navigate} />
+      )}
       {route.name === 'signin' && !user && <SignIn />}
-      {(route.name === 'host' || route.name === 'host-new' || route.name === 'host-edit' || route.name === 'bookings' || route.name === 'wishlists' || route.name === 'messages') && !user && (
+      {(route.name === 'host' || route.name === 'host-new' || route.name === 'host-edit' || route.name === 'bookings' || route.name === 'wishlists' || route.name === 'messages' || route.name === 'seed') && !user && (
         <SignIn />
       )}
       <BottomNav user={user} onNavigate={navigate} onSignIn={() => navigate('#/signin')} activeRoute={route.name} />

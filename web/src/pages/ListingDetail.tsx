@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { User } from '@proappstore/sdk'
 import type { Listing, Review } from '../types'
 import { getListing, getReviewsForListing, getBookingsForListing, createBooking, createReview, canLeaveReview } from '../lib/db'
+import { parseIcal, isDateBlocked, type BlockedRange } from '../lib/ical'
+import { app } from '../lib/app'
 
 export function ListingDetail({
   listingId,
@@ -25,13 +27,23 @@ export function ListingDetail({
   const [reviewRating, setReviewRating] = useState(0)
   const [reviewComment, setReviewComment] = useState('')
   const [submittingReview, setSubmittingReview] = useState(false)
+  const [blockedDates, setBlockedDates] = useState<BlockedRange[]>([])
 
   useEffect(() => {
     Promise.all([getListing(listingId), getReviewsForListing(listingId)])
-      .then(([l, r]) => {
+      .then(async ([l, r]) => {
         setListing(l)
         setReviews(r)
         setLoading(false)
+        if (l?.ical_url) {
+          try {
+            const res = await app.proxy.fetch(l.ical_url)
+            if (res.ok) {
+              const text = await res.text()
+              setBlockedDates(parseIcal(text))
+            }
+          } catch { /* iCal sync is best-effort */ }
+        }
       })
       .catch(() => { setLoading(false) })
   }, [listingId])
@@ -95,6 +107,18 @@ export function ListingDetail({
     if (!checkIn || !checkOut || nights <= 0) return
     setBooking(true)
     setBookError('')
+    // Check iCal blocked dates
+    const checkDate = new Date(checkIn)
+    const endDate = new Date(checkOut)
+    while (checkDate < endDate) {
+      const dateStr = checkDate.toISOString().split('T')[0]
+      if (isDateBlocked(dateStr, blockedDates)) {
+        setBookError('Some of your dates conflict with the host\'s external calendar.')
+        setBooking(false)
+        return
+      }
+      checkDate.setDate(checkDate.getDate() + 1)
+    }
     try {
       await createBooking({
         listing_id: listing!.id,
@@ -395,6 +419,9 @@ export function ListingDetail({
                     />
                   </label>
                 </div>
+                {blockedDates.length > 0 && (
+                  <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>Availability synced from host's calendar</p>
+                )}
                 <label className="mt-2 block">
                   <span className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Guests</span>
                   <select

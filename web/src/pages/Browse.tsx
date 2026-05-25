@@ -218,6 +218,16 @@ export function Browse({ onNavigate, user }: { onNavigate: (hash: string) => voi
           <p className="text-sm" style={{ color: 'var(--muted)' }}>
             {search || activeFilterCount > 0 ? 'No listings match your search.' : 'No listings yet. Be the first to host!'}
           </p>
+          {!search && activeFilterCount === 0 && user && (
+            <button
+              type="button"
+              onClick={() => onNavigate('#/seed')}
+              className="mt-3 text-sm font-medium"
+              style={{ color: 'var(--accent)' }}
+            >
+              Or generate sample listings
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -33,6 +33,7 @@ export function CreateListing({
   const [checkOutTime, setCheckOutTime] = useState('11:00')
   const [instantBook, setInstantBook] = useState(false)
   const [cleaningFee, setCleaningFee] = useState('')
+  const [icalUrl, setIcalUrl] = useState('')
   const [saving, setSaving] = useState(false)
   const [uploadProgress, setUploadProgress] = useState('')
 
@@ -96,6 +97,7 @@ export function CreateListing({
       instant_book: instantBook,
       cleaning_fee: parseFloat(cleaningFee || '0'),
       service_fee_pct: 12,
+      ical_url: icalUrl,
     })
 
     onNavigate(`#/listing/${id}`)
@@ -422,6 +424,20 @@ export function CreateListing({
             style={{ background: 'var(--paper-deep)', border: '1px solid var(--line)', color: 'var(--muted)' }}
           />
           <span className="mt-1 block text-xs" style={{ color: 'var(--muted)' }}>Service fee is 12% and cannot be changed.</span>
+        </label>
+
+        {/* External calendar */}
+        <label className="block">
+          <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>External calendar (iCal URL)</span>
+          <input
+            type="url"
+            value={icalUrl}
+            onChange={(e) => setIcalUrl(e.target.value)}
+            placeholder="https://www.airbnb.com/calendar/ical/..."
+            className="mt-1 w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+            style={{ background: 'var(--glass)', border: '1px solid var(--line)', color: 'var(--ink)' }}
+          />
+          <span className="mt-1 block text-xs" style={{ color: 'var(--muted)' }}>Paste your Airbnb or Booking.com iCal link to sync availability</span>
         </label>
 
         <button

@@ -15,9 +15,9 @@ export async function createListing(
   const id = uid()
   const now = Date.now()
   await app.db.execute(
-    `INSERT INTO listings (id, host_id, host_name, host_avatar, title, description, price_per_night, location, lat, lng, capacity, bedrooms, bathrooms, amenities, images, house_rules, cancellation_policy, check_in_time, check_out_time, instant_book, cleaning_fee, service_fee_pct, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, data.host_id, data.host_name, data.host_avatar, data.title, data.description, data.price_per_night, data.location, data.lat, data.lng, data.capacity, data.bedrooms, data.bathrooms, data.amenities, data.images, data.house_rules, data.cancellation_policy, data.check_in_time, data.check_out_time, data.instant_book ? 1 : 0, data.cleaning_fee, data.service_fee_pct, now, now],
+    `INSERT INTO listings (id, host_id, host_name, host_avatar, title, description, price_per_night, location, lat, lng, capacity, bedrooms, bathrooms, amenities, images, house_rules, cancellation_policy, check_in_time, check_out_time, instant_book, cleaning_fee, service_fee_pct, ical_url, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id, data.host_id, data.host_name, data.host_avatar, data.title, data.description, data.price_per_night, data.location, data.lat, data.lng, data.capacity, data.bedrooms, data.bathrooms, data.amenities, data.images, data.house_rules, data.cancellation_policy, data.check_in_time, data.check_out_time, data.instant_book ? 1 : 0, data.cleaning_fee, data.service_fee_pct, data.ical_url, now, now],
   )
   return id
 }
@@ -42,10 +42,10 @@ export async function getMyListings(hostId: string): Promise<Listing[]> {
 
 export async function updateListing(
   id: string,
-  data: Partial<Pick<Listing, 'title' | 'description' | 'price_per_night' | 'location' | 'lat' | 'lng' | 'capacity' | 'bedrooms' | 'bathrooms' | 'amenities' | 'images' | 'house_rules' | 'cancellation_policy' | 'check_in_time' | 'check_out_time' | 'instant_book' | 'cleaning_fee' | 'service_fee_pct'>>,
+  data: Partial<Pick<Listing, 'title' | 'description' | 'price_per_night' | 'location' | 'lat' | 'lng' | 'capacity' | 'bedrooms' | 'bathrooms' | 'amenities' | 'images' | 'house_rules' | 'cancellation_policy' | 'check_in_time' | 'check_out_time' | 'instant_book' | 'cleaning_fee' | 'service_fee_pct' | 'ical_url'>>,
 ): Promise<void> {
   await ensureMigrated(app)
-  const ALLOWED_COLS = new Set(['title','description','price_per_night','location','lat','lng','capacity','bedrooms','bathrooms','amenities','images','house_rules','cancellation_policy','check_in_time','check_out_time','instant_book','cleaning_fee','service_fee_pct'])
+  const ALLOWED_COLS = new Set(['title','description','price_per_night','location','lat','lng','capacity','bedrooms','bathrooms','amenities','images','house_rules','cancellation_policy','check_in_time','check_out_time','instant_book','cleaning_fee','service_fee_pct','ical_url'])
   const sets: string[] = []
   const vals: unknown[] = []
   for (const [k, v] of Object.entries(data)) {

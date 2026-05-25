@@ -21,6 +21,7 @@ export interface Listing {
   instant_book: boolean
   cleaning_fee: number
   service_fee_pct: number // percentage, e.g. 12
+  ical_url: string
   created_at: number
   updated_at: number
 }
