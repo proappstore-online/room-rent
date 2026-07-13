@@ -1,0 +1,294 @@
+{
+  "tools": [
+    {
+      "name": "list_listings",
+      "description": "All listings, newest first (public browse among signed-in users)",
+      "operation": "query",
+      "sql": "SELECT * FROM listings ORDER BY created_at DESC",
+      "params": {},
+      "requires_auth": true
+    },
+    {
+      "name": "get_listing",
+      "description": "One listing by id",
+      "operation": "query",
+      "sql": "SELECT * FROM listings WHERE id = :id",
+      "params": {
+        "id": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "get_listing_host",
+      "description": "The host_id of one listing (used to target a booking-request notification)",
+      "operation": "query",
+      "sql": "SELECT host_id FROM listings WHERE id = :id",
+      "params": {
+        "id": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_my_listings",
+      "description": "Listings hosted by the caller, newest first",
+      "operation": "query",
+      "sql": "SELECT * FROM listings WHERE host_id = :__user_id ORDER BY created_at DESC",
+      "params": {},
+      "requires_auth": true
+    },
+    {
+      "name": "create_listing",
+      "description": "Create a listing hosted by the caller",
+      "operation": "execute",
+      "sql": "INSERT INTO listings (id, host_id, host_name, host_avatar, title, description, price_per_night, location, lat, lng, capacity, bedrooms, bathrooms, amenities, images, house_rules, cancellation_policy, check_in_time, check_out_time, instant_book, cleaning_fee, service_fee_pct, ical_url, created_at, updated_at) VALUES (:id, :__user_id, :host_name, :host_avatar, :title, :description, :price_per_night, :location, :lat, :lng, :capacity, :bedrooms, :bathrooms, :amenities, :images, :house_rules, :cancellation_policy, :check_in_time, :check_out_time, :instant_book, :cleaning_fee, :service_fee_pct, :ical_url, :__now, :__now)",
+      "params": {
+        "id": { "type": "string" },
+        "host_name": { "type": "string" },
+        "host_avatar": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "price_per_night": { "type": "number" },
+        "location": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "capacity": { "type": "integer" },
+        "bedrooms": { "type": "integer" },
+        "bathrooms": { "type": "integer" },
+        "amenities": { "type": "string" },
+        "images": { "type": "string" },
+        "house_rules": { "type": "string" },
+        "cancellation_policy": { "type": "string" },
+        "check_in_time": { "type": "string" },
+        "check_out_time": { "type": "string" },
+        "instant_book": { "type": "integer" },
+        "cleaning_fee": { "type": "number" },
+        "service_fee_pct": { "type": "number" },
+        "ical_url": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "update_listing",
+      "description": "Update a listing the caller hosts",
+      "operation": "execute",
+      "sql": "UPDATE listings SET title = :title, description = :description, price_per_night = :price_per_night, location = :location, lat = :lat, lng = :lng, capacity = :capacity, bedrooms = :bedrooms, bathrooms = :bathrooms, amenities = :amenities, images = :images, house_rules = :house_rules, cancellation_policy = :cancellation_policy, check_in_time = :check_in_time, check_out_time = :check_out_time, instant_book = :instant_book, cleaning_fee = :cleaning_fee, service_fee_pct = :service_fee_pct, ical_url = :ical_url, updated_at = :__now WHERE id = :id AND host_id = :__user_id",
+      "params": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "price_per_night": { "type": "number" },
+        "location": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "capacity": { "type": "integer" },
+        "bedrooms": { "type": "integer" },
+        "bathrooms": { "type": "integer" },
+        "amenities": { "type": "string" },
+        "images": { "type": "string" },
+        "house_rules": { "type": "string" },
+        "cancellation_policy": { "type": "string" },
+        "check_in_time": { "type": "string" },
+        "check_out_time": { "type": "string" },
+        "instant_book": { "type": "integer" },
+        "cleaning_fee": { "type": "number" },
+        "service_fee_pct": { "type": "number" },
+        "ical_url": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "delete_listing",
+      "description": "Delete a listing the caller hosts and all its children (favorites, messages, reviews, bookings) atomically",
+      "operation": "batch",
+      "statements": [
+        "DELETE FROM favorites WHERE listing_id = :id AND EXISTS (SELECT 1 FROM listings l WHERE l.id = :id AND l.host_id = :__user_id)",
+        "DELETE FROM messages WHERE listing_id = :id AND EXISTS (SELECT 1 FROM listings l WHERE l.id = :id AND l.host_id = :__user_id)",
+        "DELETE FROM reviews WHERE listing_id = :id AND EXISTS (SELECT 1 FROM listings l WHERE l.id = :id AND l.host_id = :__user_id)",
+        "DELETE FROM bookings WHERE listing_id = :id AND EXISTS (SELECT 1 FROM listings l WHERE l.id = :id AND l.host_id = :__user_id)",
+        "DELETE FROM listings WHERE id = :id AND host_id = :__user_id"
+      ],
+      "params": {
+        "id": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "can_leave_review",
+      "description": "Whether the caller has a completed, un-reviewed booking on a listing (returns a row if yes)",
+      "operation": "query",
+      "sql": "SELECT 1 AS ok FROM bookings WHERE listing_id = :listing_id AND guest_id = :__user_id AND status = 'completed' AND id NOT IN (SELECT booking_id FROM reviews WHERE author_id = :__user_id) LIMIT 1",
+      "params": {
+        "listing_id": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "create_booking",
+      "description": "Create a pending booking for the caller, only if the dates don't overlap an existing pending/confirmed booking",
+      "operation": "execute",
+      "sql": "INSERT INTO bookings (id, listing_id, guest_id, guest_name, check_in, check_out, guests, total_price, status, created_at) SELECT :id, :listing_id, :__user_id, :guest_name, :check_in, :check_out, :guests, :total_price, 'pending', :__now WHERE NOT EXISTS (SELECT 1 FROM bookings b WHERE b.listing_id = :listing_id AND b.status IN ('pending','confirmed') AND b.check_in < :check_out AND b.check_out > :check_in)",
+      "params": {
+        "id": { "type": "string" },
+        "listing_id": { "type": "string" },
+        "guest_name": { "type": "string" },
+        "check_in": { "type": "string" },
+        "check_out": { "type": "string" },
+        "guests": { "type": "integer" },
+        "total_price": { "type": "number" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_bookings_for_listing",
+      "description": "The caller's own bookings on one listing, earliest check-in first",
+      "operation": "query",
+      "sql": "SELECT * FROM bookings WHERE listing_id = :listing_id AND guest_id = :__user_id ORDER BY check_in ASC",
+      "params": {
+        "listing_id": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_my_bookings",
+      "description": "The caller's bookings joined with listing summary, newest first",
+      "operation": "query",
+      "sql": "SELECT b.*, l.title AS listing_title, l.location AS listing_location, l.images AS listing_images FROM bookings b JOIN listings l ON b.listing_id = l.id WHERE b.guest_id = :__user_id ORDER BY b.created_at DESC",
+      "params": {},
+      "requires_auth": true
+    },
+    {
+      "name": "list_host_bookings",
+      "description": "Bookings on listings the caller hosts, joined with listing title, newest first",
+      "operation": "query",
+      "sql": "SELECT b.*, l.title AS listing_title FROM bookings b JOIN listings l ON b.listing_id = l.id WHERE l.host_id = :__user_id ORDER BY b.created_at DESC",
+      "params": {},
+      "requires_auth": true
+    },
+    {
+      "name": "update_booking_status",
+      "description": "Set a booking's status (only the host of the booking's listing may do this)",
+      "operation": "execute",
+      "sql": "UPDATE bookings SET status = :status WHERE id = :id AND EXISTS (SELECT 1 FROM listings l WHERE l.id = bookings.listing_id AND l.host_id = :__user_id)",
+      "params": {
+        "id": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "get_booking_notify_info",
+      "description": "Guest and listing title for a booking the caller hosts (used to target a status-change notification)",
+      "operation": "query",
+      "sql": "SELECT b.guest_id, b.guest_name, l.title FROM bookings b JOIN listings l ON b.listing_id = l.id WHERE b.id = :id AND l.host_id = :__user_id",
+      "params": {
+        "id": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "create_review",
+      "description": "Post a review authored by the caller, only for a completed booking of theirs on the listing",
+      "operation": "execute",
+      "sql": "INSERT INTO reviews (id, listing_id, booking_id, author_id, author_name, author_avatar, rating, comment, created_at) SELECT :id, :listing_id, :booking_id, :__user_id, :author_name, :author_avatar, :rating, :comment, :__now WHERE EXISTS (SELECT 1 FROM bookings b WHERE b.id = :booking_id AND b.listing_id = :listing_id AND b.guest_id = :__user_id AND b.status = 'completed') AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = :booking_id AND r.author_id = :__user_id)",
+      "params": {
+        "id": { "type": "string" },
+        "listing_id": { "type": "string" },
+        "booking_id": { "type": "string" },
+        "author_name": { "type": "string" },
+        "author_avatar": { "type": "string" },
+        "rating": { "type": "integer", "max": 5 },
+        "comment": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_reviews_for_listing",
+      "description": "Reviews for one listing, newest first",
+      "operation": "query",
+      "sql": "SELECT * FROM reviews WHERE listing_id = :listing_id ORDER BY created_at DESC",
+      "params": {
+        "listing_id": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "is_favorited",
+      "description": "Whether the caller has favorited a listing (returns a row if yes)",
+      "operation": "query",
+      "sql": "SELECT 1 AS ok FROM favorites WHERE user_id = :__user_id AND listing_id = :listing_id",
+      "params": {
+        "listing_id": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "add_favorite",
+      "description": "Add a listing to the caller's favorites",
+      "operation": "execute",
+      "sql": "INSERT OR IGNORE INTO favorites (user_id, listing_id, created_at) VALUES (:__user_id, :listing_id, :__now)",
+      "params": {
+        "listing_id": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "remove_favorite",
+      "description": "Remove a listing from the caller's favorites",
+      "operation": "execute",
+      "sql": "DELETE FROM favorites WHERE user_id = :__user_id AND listing_id = :listing_id",
+      "params": {
+        "listing_id": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_my_favorite_ids",
+      "description": "The listing ids the caller has favorited",
+      "operation": "query",
+      "sql": "SELECT listing_id FROM favorites WHERE user_id = :__user_id",
+      "params": {},
+      "requires_auth": true
+    },
+    {
+      "name": "list_my_favorite_listings",
+      "description": "Full listings the caller has favorited, newest favorite first",
+      "operation": "query",
+      "sql": "SELECT l.* FROM listings l JOIN favorites f ON l.id = f.listing_id WHERE f.user_id = :__user_id ORDER BY f.created_at DESC",
+      "params": {},
+      "requires_auth": true
+    },
+    {
+      "name": "send_message",
+      "description": "Send a message from the caller to another user about a listing",
+      "operation": "execute",
+      "sql": "INSERT INTO messages (id, listing_id, sender_id, sender_name, recipient_id, body, created_at) VALUES (:id, :listing_id, :__user_id, :sender_name, :recipient_id, :body, :__now)",
+      "params": {
+        "id": { "type": "string" },
+        "listing_id": { "type": "string" },
+        "sender_name": { "type": "string" },
+        "recipient_id": { "type": "string" },
+        "body": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_messages",
+      "description": "Messages about a listing between the caller and one other user, oldest first",
+      "operation": "query",
+      "sql": "SELECT * FROM messages WHERE listing_id = :listing_id AND ((sender_id = :__user_id AND recipient_id = :other_id) OR (sender_id = :other_id AND recipient_id = :__user_id)) ORDER BY created_at ASC",
+      "params": {
+        "listing_id": { "type": "string" },
+        "other_id": { "type": "string" }
+      },
+      "requires_auth": true
+    },
+    {
+      "name": "list_conversations",
+      "description": "The caller's conversation threads (one per listing + counterparty) with the latest message, newest first",
+      "operation": "query",
+      "sql": "SELECT sub.listing_id, l.title AS listing_title, sub.other_id, COALESCE((SELECT sender_name FROM messages WHERE listing_id = sub.listing_id AND sender_id = sub.other_id LIMIT 1), 'User') AS other_name, m2.body AS last_message, m2.created_at AS last_at FROM (SELECT listing_id, CASE WHEN sender_id = :__user_id THEN recipient_id ELSE sender_id END AS other_id, MAX(created_at) AS max_at FROM messages WHERE sender_id = :__user_id OR recipient_id = :__user_id GROUP BY listing_id, other_id) sub JOIN messages m2 ON m2.listing_id = sub.listing_id AND m2.created_at = sub.max_at AND ((m2.sender_id = :__user_id AND m2.recipient_id = sub.other_id) OR (m2.sender_id = sub.other_id AND m2.recipient_id = :__user_id)) JOIN listings l ON l.id = sub.listing_id ORDER BY sub.max_at DESC",
+      "params": {},
+      "requires_auth": true
+    }
+  ]
+}

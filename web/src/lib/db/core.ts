@@ -98,14 +98,28 @@ const migrations: { up: string; safe?: boolean }[] = [
 
 let migrated = false
 
+/**
+ * Apply pending migrations. Raw `db.execute` is restricted to the app's team
+ * since the platform's cross-tenant SQL lockdown, so a regular signed-in user
+ * gets a 403 here — that's fine: the schema is already migrated (a team
+ * member's visit applies anything new), so swallow the 403 and continue. Every
+ * user-facing read/write goes through registered actions (see lib/actions.ts),
+ * not raw SQL. The `migrated` flag is set on both success AND a swallowed 403
+ * so render-gating chains that await this always resolve.
+ */
 export async function ensureMigrated(app: ProAppStore) {
   if (migrated) return
-  for (const m of migrations) {
-    if (m.safe) {
-      try { await app.db.execute(m.up) } catch { /* column already exists */ }
-    } else {
-      await app.db.execute(m.up)
+  try {
+    for (const m of migrations) {
+      if (m.safe) {
+        try { await app.db.execute(m.up) } catch { /* column already exists */ }
+      } else {
+        await app.db.execute(m.up)
+      }
     }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (!message.includes('403')) throw err
   }
   migrated = true
 }
