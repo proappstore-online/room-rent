@@ -6,7 +6,12 @@
       "operation": "query",
       "sql": "SELECT * FROM listings ORDER BY created_at DESC",
       "params": {},
-      "requires_auth": true
+      "requires_auth": true,
+      "auth": {
+        "caller_unscoped": {
+          "reason": "public marketplace browse: every signed-in user sees all published rental listings (host display name/avatar, location text, price, photos)"
+        }
+      }
     },
     {
       "name": "get_listing",
@@ -16,7 +21,12 @@
       "params": {
         "id": { "type": "string" }
       },
-      "requires_auth": true
+      "requires_auth": true,
+      "auth": {
+        "caller_unscoped": {
+          "reason": "public listing detail page shown to any prospective guest; ical_url is the listing's availability feed the detail page reads to show blocked dates to guests"
+        }
+      }
     },
     {
       "name": "get_listing_host",
@@ -26,7 +36,12 @@
       "params": {
         "id": { "type": "string" }
       },
-      "requires_auth": true
+      "requires_auth": true,
+      "auth": {
+        "caller_unscoped": {
+          "reason": "returns only the host_id of a public listing, needed to notify the host of a booking request"
+        }
+      }
     },
     {
       "name": "list_my_listings",
@@ -209,7 +224,12 @@
       "params": {
         "listing_id": { "type": "string" }
       },
-      "requires_auth": true
+      "requires_auth": true,
+      "auth": {
+        "caller_unscoped": {
+          "reason": "public reviews shown on a listing's detail page to all prospective guests"
+        }
+      }
     },
     {
       "name": "is_favorited",
