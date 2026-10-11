@@ -85,7 +85,8 @@ export default function App() {
         <CreateListing user={user} onNavigate={navigate} />
       )}
       {route.name === 'host-edit' && user && (
-        <EditListing listingId={route.id} user={user} onNavigate={navigate} />
+        // Remount per listing and account so a previous form never carries over.
+        <EditListing key={`${route.id}:${user.id}`} listingId={route.id} user={user} onNavigate={navigate} />
       )}
       {route.name === 'bookings' && user && (
         <MyBookings user={user} onNavigate={navigate} />
