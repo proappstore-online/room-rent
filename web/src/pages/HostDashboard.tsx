@@ -1,7 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { User } from '@proappstore/sdk'
 import type { Listing, Booking } from '../types'
 import { getMyListings, getHostBookings, updateBookingStatus, deleteListing } from '../lib/db'
+import { createLifecycleScope, settleIfCurrent } from '../lib/lifecycle'
+
+function omit<T>(record: Record<string, T>, key: string) {
+  const next = { ...record }
+  delete next[key]
+  return next
+}
 
 export function HostDashboard({
   user,
@@ -14,40 +21,107 @@ export function HostDashboard({
   const [listings, setListings] = useState<Listing[]>([])
   const [bookings, setBookings] = useState<(Booking & { listing_title: string })[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState('')
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  // Keyed by `booking:<id>` / `listing:<id>`: one in-flight mutation per row.
+  const [pending, setPending] = useState<Record<string, boolean>>({})
+  const [actionErrors, setActionErrors] = useState<Record<string, string>>({})
+  const dashboardScope = useRef(createLifecycleScope(user.id))
+
+  // This runs during render, so a previous account's dashboard is hidden and
+  // its in-flight loads/mutations are invalidated before effects run.
+  dashboardScope.current.updateContext(user.id)
 
   useEffect(() => {
-    Promise.all([getMyListings(user.id), getHostBookings(user.id)]).then(([l, b]) => {
-      setListings(l)
-      setBookings(b)
-      setLoading(false)
+    setListings([])
+    setBookings([])
+    setPending({})
+    setActionErrors({})
+    setLoading(true)
+    setLoadError('')
+    setLoadedUserId(null)
+    const request = dashboardScope.current.begin(user.id)
+
+    void settleIfCurrent(request, Promise.all([getMyListings(user.id), getHostBookings(user.id)]), {
+      onSuccess: ([l, b]) => {
+        setListings(l)
+        setBookings(b)
+        setLoadedUserId(user.id)
+        setLoading(false)
+      },
+      onError: () => {
+        setLoadedUserId(user.id)
+        setLoadError('Unable to load your dashboard. Please try again.')
+        setLoading(false)
+      },
     })
-  }, [user.id])
+  }, [user.id, loadAttempt])
 
-  async function handleConfirm(bookingId: string) {
-    await updateBookingStatus(bookingId, 'confirmed')
-    setBookings((prev) => prev.map((b) => b.id === bookingId ? { ...b, status: 'confirmed' as const } : b))
+  function runAction(key: string, operation: () => Promise<void>, onSuccess: () => void, failure: string) {
+    if (pending[key]) return
+    const request = dashboardScope.current.capture()
+    setPending((prev) => ({ ...prev, [key]: true }))
+    setActionErrors((prev) => omit(prev, key))
+    void settleIfCurrent(request, operation(), {
+      onSuccess: () => {
+        onSuccess()
+        setPending((prev) => omit(prev, key))
+      },
+      onError: () => {
+        setActionErrors((prev) => ({ ...prev, [key]: failure }))
+        setPending((prev) => omit(prev, key))
+      },
+    })
   }
 
-  async function handleCancel(bookingId: string) {
-    await updateBookingStatus(bookingId, 'cancelled')
-    setBookings((prev) => prev.map((b) => b.id === bookingId ? { ...b, status: 'cancelled' as const } : b))
+  function setBookingStatus(bookingId: string, status: 'confirmed' | 'cancelled' | 'completed', failure: string) {
+    runAction(
+      `booking:${bookingId}`,
+      () => updateBookingStatus(bookingId, status),
+      () => setBookings((prev) => prev.map((b) => b.id === bookingId ? { ...b, status } : b)),
+      failure,
+    )
   }
 
-  async function handleComplete(bookingId: string) {
-    await updateBookingStatus(bookingId, 'completed')
-    setBookings((prev) => prev.map((b) => b.id === bookingId ? { ...b, status: 'completed' as const } : b))
+  function handleConfirm(bookingId: string) {
+    setBookingStatus(bookingId, 'confirmed', 'Could not confirm this booking. Please try again.')
   }
 
-  async function handleDelete(listingId: string) {
+  function handleCancel(bookingId: string) {
+    setBookingStatus(bookingId, 'cancelled', 'Could not decline this booking. Please try again.')
+  }
+
+  function handleComplete(bookingId: string) {
+    setBookingStatus(bookingId, 'completed', 'Could not mark this booking completed. Please try again.')
+  }
+
+  function handleDelete(listingId: string) {
+    if (pending[`listing:${listingId}`]) return
     if (!confirm('Delete this listing? All bookings, reviews, and messages will be permanently removed.')) return
-    await deleteListing(listingId, user.id)
-    setListings((prev) => prev.filter((l) => l.id !== listingId))
+    runAction(
+      `listing:${listingId}`,
+      () => deleteListing(listingId, user.id),
+      () => setListings((prev) => prev.filter((l) => l.id !== listingId)),
+      'Could not delete this listing. Please try again.',
+    )
   }
 
-  if (loading) {
+  if (loading || loadedUserId !== user.id) {
     return (
       <div className="flex justify-center py-20">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-20 text-center">
+        <p className="text-sm" style={{ color: 'var(--error)' }}>{loadError}</p>
+        <button onClick={() => setLoadAttempt((attempt) => attempt + 1)} className="mt-3 text-sm font-medium" style={{ color: 'var(--accent)' }}>
+          Try again
+        </button>
       </div>
     )
   }
@@ -114,6 +188,9 @@ export function HostDashboard({
                       {l.title}
                     </button>
                     <p className="text-xs" style={{ color: 'var(--muted)' }}>{l.location} · ${l.price_per_night}/night</p>
+                    {actionErrors[`listing:${l.id}`] && (
+                      <p role="alert" className="mt-0.5 text-xs" style={{ color: 'var(--error)' }}>{actionErrors[`listing:${l.id}`]}</p>
+                    )}
                   </div>
                   <div className="flex gap-1">
                     <button
@@ -125,10 +202,11 @@ export function HostDashboard({
                     </button>
                     <button
                       onClick={() => handleDelete(l.id)}
-                      className="rounded-lg px-2 py-1 text-xs font-medium"
+                      disabled={!!pending[`listing:${l.id}`]}
+                      className="rounded-lg px-2 py-1 text-xs font-medium disabled:opacity-50"
                       style={{ color: 'var(--error)', background: 'var(--glass)' }}
                     >
-                      Delete
+                      {pending[`listing:${l.id}`] ? 'Deleting...' : 'Delete'}
                     </button>
                   </div>
                 </div>
@@ -172,14 +250,16 @@ export function HostDashboard({
                     <>
                       <button
                         onClick={() => handleConfirm(b.id)}
-                        className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
+                        disabled={!!pending[`booking:${b.id}`]}
+                        className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
                         style={{ background: 'var(--mint)' }}
                       >
                         Confirm
                       </button>
                       <button
                         onClick={() => handleCancel(b.id)}
-                        className="rounded-lg px-3 py-1.5 text-xs font-medium"
+                        disabled={!!pending[`booking:${b.id}`]}
+                        className="rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
                         style={{ color: 'var(--error)', background: 'var(--glass)', border: '1px solid var(--line)' }}
                       >
                         Decline
@@ -189,7 +269,8 @@ export function HostDashboard({
                   {b.status === 'confirmed' && (
                     <button
                       onClick={() => handleComplete(b.id)}
-                      className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
+                      disabled={!!pending[`booking:${b.id}`]}
+                      className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
                       style={{ background: 'var(--mint)' }}
                     >
                       Mark completed
@@ -203,6 +284,9 @@ export function HostDashboard({
                     Message guest
                   </button>
                 </div>
+                {actionErrors[`booking:${b.id}`] && (
+                  <p role="alert" className="mt-2 text-xs" style={{ color: 'var(--error)' }}>{actionErrors[`booking:${b.id}`]}</p>
+                )}
               </div>
             ))}
           </div>
