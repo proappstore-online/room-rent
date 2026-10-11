@@ -82,6 +82,7 @@ export function Browse({ onNavigate, user }: { onNavigate: (hash: string) => voi
         <div className="mt-3">
           <input
             type="text"
+            aria-label="Search listings"
             placeholder="Search by title or location..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -116,6 +117,7 @@ export function Browse({ onNavigate, user }: { onNavigate: (hash: string) => voi
             Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
           </button>
           <select
+            aria-label="Sort listings"
             value={sort}
             onChange={(e) => setSort(e.target.value as SortOption)}
             className="rounded-lg px-3 py-1.5 text-sm outline-none"
@@ -138,6 +140,7 @@ export function Browse({ onNavigate, user }: { onNavigate: (hash: string) => voi
               <div className="mt-1.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <input
                   type="number"
+                  aria-label="Minimum price per night"
                   placeholder="Min"
                   value={priceMin}
                   onChange={(e) => setPriceMin(e.target.value)}
@@ -148,6 +151,7 @@ export function Browse({ onNavigate, user }: { onNavigate: (hash: string) => voi
                 <span className="hidden text-sm sm:block" style={{ color: 'var(--muted)' }}>–</span>
                 <input
                   type="number"
+                  aria-label="Maximum price per night"
                   placeholder="Max"
                   value={priceMax}
                   onChange={(e) => setPriceMax(e.target.value)}
@@ -163,6 +167,7 @@ export function Browse({ onNavigate, user }: { onNavigate: (hash: string) => voi
               <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Minimum guests</span>
               <input
                 type="number"
+                aria-label="Minimum guests"
                 placeholder="Any"
                 value={minGuests}
                 onChange={(e) => setMinGuests(e.target.value)}

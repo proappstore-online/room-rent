@@ -11,6 +11,7 @@
     "prebuild": "npx -y @proappstore/cli@latest check",
     "build": "pnpm --filter @room-rent/web build",
     "preview": "pnpm --filter @room-rent/web preview",
-    "typecheck": "pnpm --filter @room-rent/web exec tsc -b"
+    "typecheck": "pnpm --filter @room-rent/web exec tsc -b",
+    "test": "node --test test/*.test.mjs"
   }
 }

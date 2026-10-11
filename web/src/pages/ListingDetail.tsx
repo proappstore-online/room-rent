@@ -356,6 +356,7 @@ export function ListingDetail({
                   ))}
                 </div>
                 <textarea
+                  aria-label="Review comment"
                   value={reviewComment}
                   onChange={(e) => setReviewComment(e.target.value)}
                   placeholder="Share your experience..."
@@ -365,6 +366,7 @@ export function ListingDetail({
                 />
                 <button
                   onClick={handleReview}
+                  aria-label="Submit review"
                   disabled={submittingReview || reviewRating === 0}
                   className="mt-3 rounded-xl px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
                   style={{ background: 'var(--accent)' }}
@@ -468,6 +470,7 @@ export function ListingDetail({
 
                 <button
                   onClick={handleBook}
+                  aria-label={user ? (listing.instant_book ? 'Book now' : 'Request to book') : 'Sign in to book'}
                   disabled={booking || nights <= 0}
                   className="mt-4 w-full rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-50"
                   style={{ background: 'var(--accent)' }}

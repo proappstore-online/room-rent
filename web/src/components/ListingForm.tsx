@@ -163,7 +163,7 @@ export function ListingForm({
       <div>
         <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>House rules</span>
         <div className="mt-1 flex gap-2">
-          <input type="text" value={ruleInput} onChange={(e) => setRuleInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addRule() } }} placeholder="e.g. No smoking" className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none" style={inputStyle} />
+          <input type="text" aria-label="New house rule" value={ruleInput} onChange={(e) => setRuleInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addRule() } }} placeholder="e.g. No smoking" className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none" style={inputStyle} />
           <button type="button" onClick={addRule} className="rounded-xl px-4 py-2.5 text-sm font-medium" style={{ ...inputStyle }}>Add</button>
         </div>
         {data.rules.length > 0 && (
@@ -231,7 +231,7 @@ export function ListingForm({
         <span className="mt-1 block text-xs" style={{ color: 'var(--muted)' }}>Paste your Airbnb or Booking.com iCal link to sync availability</span>
       </label>
 
-      <button type="submit" disabled={saving || !data.title || !data.price} className="w-full rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-50" style={{ background: 'var(--accent)' }}>
+      <button type="submit" aria-label={submitLabel} disabled={saving || !data.title || !data.price} className="w-full rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-50" style={{ background: 'var(--accent)' }}>
         {saving ? (uploadProgress || 'Saving...') : submitLabel}
       </button>
       {submitError && <p className="mt-2 text-center text-sm" style={{ color: 'var(--error)' }}>{submitError}</p>}

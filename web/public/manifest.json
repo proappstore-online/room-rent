@@ -3,6 +3,8 @@
   "short_name": "RoomRent",
   "description": "Room rental marketplace",
   "start_url": "/",
+  "orientation": "any",
+  "min_viewport_width": 360,
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",

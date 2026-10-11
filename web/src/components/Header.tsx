@@ -66,6 +66,7 @@ export function Header({
               <NotificationBell />
               <button
                 onClick={onSignOut}
+                aria-label="Sign out"
                 className="flex items-center gap-2 rounded-full py-1 pr-3 pl-1"
                 style={{ background: 'var(--glass)', border: '1px solid var(--line)' }}
               >

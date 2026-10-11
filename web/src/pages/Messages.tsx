@@ -79,6 +79,7 @@ export function Messages({
         <div className="mb-4 flex items-center gap-3">
           <button
             onClick={() => onNavigate('#/messages')}
+            aria-label="Back to messages"
             className="rounded-lg p-1.5"
             style={{ color: 'var(--muted)' }}
           >
@@ -131,6 +132,7 @@ export function Messages({
         >
           <input
             type="text"
+            aria-label="Message"
             placeholder="Type a message..."
             value={body}
             onChange={(e) => setBody(e.target.value)}

@@ -176,6 +176,7 @@ export function SeedListings({
       {!done && (
         <button
           type="button"
+          aria-label="Generate sample listings"
           disabled={generating}
           onClick={handleGenerate}
           className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-50"
