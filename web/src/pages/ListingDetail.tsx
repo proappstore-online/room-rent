@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { User } from '@proappstore/sdk'
 import type { Listing, Review } from '../types'
 import { getListing, getReviewsForListing, getBookingsForListing, createBooking, createReview, canLeaveReview } from '../lib/db'
 import { parseIcal, isDateBlocked, type BlockedRange } from '../lib/ical'
+import { createLifecycleScope, settleIfCurrent } from '../lib/lifecycle'
 
 export function ListingDetail({
   listingId,
@@ -16,60 +17,127 @@ export function ListingDetail({
   const [listing, setListing] = useState<Listing | null>(null)
   const [reviews, setReviews] = useState<Review[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadedListingId, setLoadedListingId] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState('')
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [checkIn, setCheckIn] = useState('')
   const [checkOut, setCheckOut] = useState('')
   const [guests, setGuests] = useState(1)
   const [booking, setBooking] = useState(false)
   const [booked, setBooked] = useState(false)
+  const [bookingContext, setBookingContext] = useState('')
+  const [bookedContext, setBookedContext] = useState('')
   const [bookError, setBookError] = useState('')
+  const [bookErrorContext, setBookErrorContext] = useState('')
   const [canReview, setCanReview] = useState(false)
+  const [canReviewContext, setCanReviewContext] = useState('')
   const [reviewRating, setReviewRating] = useState(0)
   const [reviewComment, setReviewComment] = useState('')
   const [submittingReview, setSubmittingReview] = useState(false)
+  const [reviewContext, setReviewContext] = useState('')
   const [blockedDates, setBlockedDates] = useState<BlockedRange[]>([])
+  const [reviewBookingId, setReviewBookingId] = useState('')
+  const listingScope = useRef(createLifecycleScope(listingId))
+  const accountContext = `${listingId}:${user?.id ?? 'signed-out'}`
+  const accountScope = useRef(createLifecycleScope(accountContext))
+
+  // Context changes are invalidated during render so stale state is hidden
+  // immediately, rather than waiting for a passive effect to run.
+  listingScope.current.updateContext(listingId)
+  accountScope.current.updateContext(accountContext)
 
   useEffect(() => {
-    Promise.all([getListing(listingId), getReviewsForListing(listingId)])
-      .then(async ([l, r]) => {
+    setListing(null)
+    setReviews([])
+    setBlockedDates([])
+    setLoading(true)
+    setLoadError('')
+    setLoadedListingId(null)
+    const request = listingScope.current.begin(listingId)
+
+    void settleIfCurrent(request, Promise.all([getListing(listingId), getReviewsForListing(listingId)]), {
+      onSuccess: ([l, r]) => {
         setListing(l)
         setReviews(r)
+        setLoadedListingId(listingId)
         setLoading(false)
         if (l?.ical_url) {
-          try {
-            // iCal URLs don't have CORS headers — proxy through the platform API
-            const res = await fetch(`https://api.proappstore.online/v1/proxy?url=${encodeURIComponent(l.ical_url)}`)
-            if (res.ok) {
-              const text = await res.text()
-              setBlockedDates(parseIcal(text))
-            }
-          } catch { /* iCal sync is best-effort */ }
+          // iCal URLs do not have CORS headers, so proxy through the platform.
+          // A late response must never populate another listing's availability.
+          void settleIfCurrent(request,
+            fetch(`https://api.proappstore.online/v1/proxy?url=${encodeURIComponent(l.ical_url)}`)
+              .then(async (res) => res.ok ? parseIcal(await res.text()) : []),
+            { onSuccess: setBlockedDates, onError: () => {} },
+          )
         }
-      })
-      .catch(() => { setLoading(false) })
-  }, [listingId])
-
-  const [reviewBookingId, setReviewBookingId] = useState('')
+      },
+      onError: () => {
+        setListing(null)
+        setReviews([])
+        setLoadedListingId(listingId)
+        setLoadError('Unable to load this listing. Please try again.')
+        setLoading(false)
+      },
+    })
+  }, [listingId, loadAttempt])
 
   useEffect(() => {
+    // Clear every account-bound result before beginning the next entitlement
+    // lookup. Drafts are retained for same-context retry after an error.
+    setCanReview(false)
+    setCanReviewContext('')
+    setReviewBookingId('')
+    setSubmittingReview(false)
+    setReviewContext('')
+    setBooking(false)
+    setBookingContext('')
+    setBooked(false)
+    setBookedContext('')
+    setBookError('')
+    setBookErrorContext('')
     if (user) {
-      canLeaveReview(listingId, user.id).then((can) => {
-        setCanReview(can)
-        if (can) {
-          getBookingsForListing(listingId).then((bs) => {
+      const request = accountScope.current.begin(accountContext)
+      void settleIfCurrent(request, canLeaveReview(listingId, user.id), {
+        onSuccess: (can) => {
+          setCanReview(can)
+          setCanReviewContext(accountContext)
+          if (can) {
+            void settleIfCurrent(request, getBookingsForListing(listingId), {
+              onSuccess: (bs) => {
             const completed = bs.find((b) => b.guest_id === user.id && b.status === 'completed')
             if (completed) setReviewBookingId(completed.id)
-          })
-        }
+              },
+              onError: () => {},
+            })
+          }
+        },
+        onError: () => {},
       })
-    } else {
-      setCanReview(false)
     }
-  }, [listingId, user])
+  }, [listingId, user?.id, accountContext])
 
-  if (loading) {
+  const isCurrentListing = loadedListingId === listingId
+  const isCurrentAccount = canReviewContext === accountContext
+  const isBooking = booking && bookingContext === accountContext
+  const isBooked = booked && bookedContext === accountContext
+  const visibleBookError = bookErrorContext === accountContext ? bookError : ''
+  const currentBlockedDates = isCurrentListing ? blockedDates : []
+
+  if (loading || !isCurrentListing) {
     return (
       <div className="flex justify-center py-20">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-20 text-center">
+        <p style={{ color: 'var(--error)' }}>{loadError}</p>
+        <button onClick={() => setLoadAttempt((attempt) => attempt + 1)} className="mt-4 text-sm font-medium" style={{ color: 'var(--accent)' }}>
+          Try again
+        </button>
       </div>
     )
   }
@@ -102,25 +170,28 @@ export function ListingDetail({
   const serviceFee = (nightsSubtotal + cleaningFee) * serviceFeeRate
   const totalPrice = nightsSubtotal + cleaningFee + serviceFee
 
-  async function handleBook() {
+  function handleBook() {
     if (!user) { onNavigate('#/signin'); return }
     if (!checkIn || !checkOut || nights <= 0) return
+    const request = accountScope.current.capture()
     setBooking(true)
+    setBookingContext(accountContext)
     setBookError('')
+    setBookErrorContext('')
     // Check iCal blocked dates
     const checkDate = new Date(checkIn)
     const endDate = new Date(checkOut)
     while (checkDate < endDate) {
       const dateStr = checkDate.toISOString().split('T')[0]
-      if (isDateBlocked(dateStr, blockedDates)) {
+      if (isDateBlocked(dateStr, currentBlockedDates)) {
         setBookError('Some of your dates conflict with the host\'s external calendar.')
+        setBookErrorContext(accountContext)
         setBooking(false)
         return
       }
       checkDate.setDate(checkDate.getDate() + 1)
     }
-    try {
-      await createBooking({
+    void settleIfCurrent(request, createBooking({
         listing_id: listing!.id,
         guest_id: user.id,
         guest_name: user.login,
@@ -128,19 +199,26 @@ export function ListingDetail({
         check_out: checkOut,
         guests,
         total_price: totalPrice,
-      })
-      setBooked(true)
-    } catch (err) {
-      setBookError(err instanceof Error ? err.message : 'Booking failed.')
-    }
-    setBooking(false)
+      }), {
+      onSuccess: () => {
+        setBooked(true)
+        setBookedContext(accountContext)
+        setBooking(false)
+      },
+      onError: (err) => {
+        setBookError(err instanceof Error ? err.message : 'Booking failed.')
+        setBookErrorContext(accountContext)
+        setBooking(false)
+      },
+    })
   }
 
-  async function handleReview() {
+  function handleReview() {
     if (!user || !reviewRating) return
+    const request = accountScope.current.capture()
     setSubmittingReview(true)
-    try {
-      await createReview({
+    setReviewContext(accountContext)
+    void settleIfCurrent(request, createReview({
         listing_id: listingId,
         booking_id: reviewBookingId,
         author_id: user.id,
@@ -148,17 +226,30 @@ export function ListingDetail({
         author_avatar: user.avatarUrl || '',
         rating: reviewRating,
         comment: reviewComment,
-      })
-      const updated = await getReviewsForListing(listingId)
-      setReviews(updated)
-      setReviewRating(0)
-      setReviewComment('')
-      setCanReview(false)
-    } catch {
-      setBookError('Failed to submit review.')
-    } finally {
-      setSubmittingReview(false)
-    }
+      }), {
+      onSuccess: () => {
+        void settleIfCurrent(request, getReviewsForListing(listingId), {
+          onSuccess: (updated) => {
+            setReviews(updated)
+            setReviewRating(0)
+            setReviewComment('')
+            setCanReview(false)
+            setCanReviewContext('')
+            setSubmittingReview(false)
+          },
+          onError: () => {
+            setBookError('Review submitted, but reviews could not be refreshed.')
+            setBookErrorContext(accountContext)
+            setSubmittingReview(false)
+          },
+        })
+      },
+      onError: () => {
+        setBookError('Failed to submit review.')
+        setBookErrorContext(accountContext)
+        setSubmittingReview(false)
+      },
+    })
   }
 
   const isOwner = user?.id === listing.host_id
@@ -338,7 +429,7 @@ export function ListingDetail({
           )}
 
           {/* Leave a review */}
-          {canReview && (
+          {canReview && isCurrentAccount && (
             <div className="mt-8">
               <h2 className="text-base font-semibold" style={{ color: 'var(--ink)' }}>Leave a review</h2>
               <div className="mt-3 rounded-xl p-4" style={{ background: 'var(--glass)', border: '1px solid var(--line)' }}>
@@ -367,11 +458,11 @@ export function ListingDetail({
                 <button
                   onClick={handleReview}
                   aria-label="Submit review"
-                  disabled={submittingReview || reviewRating === 0}
+                  disabled={(submittingReview && reviewContext === accountContext) || reviewRating === 0}
                   className="mt-3 rounded-xl px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
                   style={{ background: 'var(--accent)' }}
                 >
-                  {submittingReview ? 'Submitting...' : 'Submit review'}
+                  {submittingReview && reviewContext === accountContext ? 'Submitting...' : 'Submit review'}
                 </button>
               </div>
             </div>
@@ -385,7 +476,7 @@ export function ListingDetail({
               ${listing.price_per_night}<span className="text-sm font-normal" style={{ color: 'var(--muted)' }}> / night</span>
             </p>
 
-            {booked ? (
+            {isBooked ? (
               <div className="mt-4 rounded-xl p-4 text-center" style={{ background: 'var(--mint-soft)' }}>
                 <p className="text-sm font-semibold" style={{ color: 'var(--mint-deep)' }}>Booking requested!</p>
                 <p className="mt-1 text-xs" style={{ color: 'var(--mint)' }}>The host will confirm shortly.</p>
@@ -421,7 +512,7 @@ export function ListingDetail({
                     />
                   </label>
                 </div>
-                {blockedDates.length > 0 && (
+                {currentBlockedDates.length > 0 && (
                   <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>Availability synced from host's calendar</p>
                 )}
                 <label className="mt-2 block">
@@ -471,14 +562,14 @@ export function ListingDetail({
                 <button
                   onClick={handleBook}
                   aria-label={user ? (listing.instant_book ? 'Book now' : 'Request to book') : 'Sign in to book'}
-                  disabled={booking || nights <= 0}
+                  disabled={isBooking || nights <= 0}
                   className="mt-4 w-full rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-50"
                   style={{ background: 'var(--accent)' }}
                 >
-                  {booking ? 'Booking...' : user ? (listing.instant_book ? 'Book now' : 'Request to book') : 'Sign in to book'}
+                  {isBooking ? 'Booking...' : user ? (listing.instant_book ? 'Book now' : 'Request to book') : 'Sign in to book'}
                 </button>
-                {bookError && (
-                  <p className="mt-2 text-center text-sm" style={{ color: 'var(--error)' }}>{bookError}</p>
+                {visibleBookError && (
+                  <p className="mt-2 text-center text-sm" style={{ color: 'var(--error)' }}>{visibleBookError}</p>
                 )}
               </>
             )}
@@ -487,7 +578,7 @@ export function ListingDetail({
       </div>
 
       {/* Mobile booking bar */}
-      {!isOwner && !booked && (
+      {!isOwner && !isBooked && (
         <div className="fixed bottom-14 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 lg:hidden"
           style={{ background: 'var(--glass-strong)', borderTop: '1px solid var(--line)', backdropFilter: 'blur(20px)' }}
         >

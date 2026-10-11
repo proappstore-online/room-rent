@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { User } from '@proappstore/sdk'
 import type { Booking } from '../types'
 import { getMyBookings } from '../lib/db'
+import { createLifecycleScope, settleIfCurrent } from '../lib/lifecycle'
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   pending: { bg: 'var(--accent-soft)', text: 'var(--accent)' },
@@ -19,10 +20,38 @@ export function MyBookings({
 }) {
   const [bookings, setBookings] = useState<(Booking & { listing_title: string; listing_location: string; listing_images: string })[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState('')
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const bookingsScope = useRef(createLifecycleScope(user.id))
+
+  // This runs during render, so a previous account's trips are hidden before
+  // effects have a chance to clear state.
+  bookingsScope.current.updateContext(user.id)
 
   useEffect(() => {
-    getMyBookings(user.id).then((b) => { setBookings(b); setLoading(false) })
-  }, [user.id])
+    setBookings([])
+    setLoading(true)
+    setLoadError('')
+    setLoadedUserId(null)
+    const request = bookingsScope.current.begin(user.id)
+
+    void settleIfCurrent(request, getMyBookings(user.id), {
+      onSuccess: (nextBookings) => {
+        setBookings(nextBookings)
+        setLoadedUserId(user.id)
+        setLoading(false)
+      },
+      onError: () => {
+        setBookings([])
+        setLoadedUserId(user.id)
+        setLoadError('Unable to load your trips. Please try again.')
+        setLoading(false)
+      },
+    })
+  }, [user.id, loadAttempt])
+
+  const isCurrentAccount = loadedUserId === user.id
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
@@ -30,9 +59,16 @@ export function MyBookings({
         My trips
       </h1>
 
-      {loading ? (
+      {loading || !isCurrentAccount ? (
         <div className="flex justify-center py-20">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+        </div>
+      ) : loadError ? (
+        <div className="py-20 text-center">
+          <p className="text-sm" style={{ color: 'var(--error)' }}>{loadError}</p>
+          <button onClick={() => setLoadAttempt((attempt) => attempt + 1)} className="mt-3 text-sm font-medium" style={{ color: 'var(--accent)' }}>
+            Try again
+          </button>
         </div>
       ) : bookings.length === 0 ? (
         <div className="py-20 text-center">
