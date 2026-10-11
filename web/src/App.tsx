@@ -75,7 +75,8 @@ export default function App() {
       <Header user={user} onSignIn={() => navigate('#/signin')} onSignOut={signOut} onNavigate={navigate} />
       {route.name === 'browse' && <Browse onNavigate={navigate} user={user} />}
       {route.name === 'listing' && (
-        <ListingDetail listingId={route.id} user={user} onNavigate={navigate} />
+        // Remount per listing and account so booking/review drafts never carry over.
+        <ListingDetail key={`${route.id}:${user?.id ?? 'signed-out'}`} listingId={route.id} user={user} onNavigate={navigate} />
       )}
       {route.name === 'host' && user && (
         <HostDashboard user={user} onNavigate={navigate} />
